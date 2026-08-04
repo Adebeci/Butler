@@ -7,6 +7,8 @@ services:
       - "8080:8080"
     env_file:
       - .env
+
+      
     environment:
       # Always win over whatever's in .env (even a blank value there),
       # so data always lands on the persisted volume below rather than
@@ -18,6 +20,7 @@ services:
       UPLOADS_DIR: /data/uploads
     volumes:
       - butler_data:/data
+      - /mnt/music:/data/music
       # A real host folder (not just the named volume) so it's easy to drop
       # files in from outside Docker -- over SMB/NAS, scp, a file manager,
       # whatever's convenient -- without needing to exec into the container.
