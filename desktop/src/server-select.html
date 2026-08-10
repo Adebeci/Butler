@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Butler</title>
+<style>
+  :root {
+    --ink: #17140F; --surface: #221D15; --surface-raised: #2B241A;
+    --parchment: #F0E6CF; --stone: #9B9484; --brass: #C89B3C; --brass-dim: #8A7638;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: var(--ink); color: var(--parchment);
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-app-region: drag;
+  }
+  .card { width: 340px; text-align: center; -webkit-app-region: no-drag; }
+  h1 { font-size: 22px; font-weight: 700; margin: 14px 0 2px; letter-spacing: 0.02em; }
+  .sub { color: var(--stone); font-size: 13px; margin-bottom: 32px; }
+  input {
+    width: 100%; padding: 12px 14px; border-radius: 8px; border: none;
+    background: var(--surface-raised); color: var(--parchment); font-size: 14px;
+    outline: none; margin-bottom: 6px;
+  }
+  input:focus { box-shadow: 0 0 0 2px var(--brass); }
+  input::placeholder { color: var(--stone); }
+  .err { color: #C9756B; font-size: 12.5px; min-height: 18px; margin: 8px 0 14px; }
+  button {
+    width: 100%; padding: 13px; border-radius: 8px; border: none;
+    background: var(--brass); color: var(--ink); font-weight: 700; font-size: 14px;
+    cursor: pointer;
+  }
+  button:disabled { background: var(--brass-dim); cursor: default; }
+  .logo { width: 72px; height: 72px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <img class="logo" src="icons/icon.png" alt="Butler">
+    <h1>Butler</h1>
+    <div class="sub">Where's your library?</div>
+    <input id="server" type="text" placeholder="http://192.168.1.10:8080" autofocus>
+    <div class="err" id="err"></div>
+    <button id="connect">Connect</button>
+  </div>
+
+<script>
+const input = document.getElementById('server');
+const err = document.getElementById('err');
+const btn = document.getElementById('connect');
+
+function normalize(url) {
+  const trimmed = url.trim().replace(/\/+$/, '');
+  return /^https?:\/\//.test(trimmed) ? trimmed : 'http://' + trimmed;
+}
+
+async function connect() {
+  const raw = input.value;
+  if (!raw.trim()) { err.textContent = 'Enter your Butler server address'; return; }
+  const target = normalize(raw);
+  btn.disabled = true; btn.textContent = 'Connecting…'; err.textContent = '';
+  try {
+    // Same reachability + "is this actually Butler" check the Android app
+    // uses -- /auth/oidc/status needs no auth and any Butler server answers it.
+    const res = await fetch(target + '/auth/oidc/status', { method: 'GET' });
+    if (!res.ok) throw new Error('bad status');
+    await res.json();
+    await window.butler.connect(target);
+  } catch (e) {
+    err.textContent = "Could not reach that server. Check the address and try again.";
+    btn.disabled = false; btn.textContent = 'Connect';
+  }
+}
+
+btn.addEventListener('click', connect);
+input.addEventListener('keydown', (e) => { if (e.key === 'Enter') connect(); });
+</script>
+</body>
+</html>

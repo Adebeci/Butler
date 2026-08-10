@@ -209,6 +209,20 @@ cd android
 
 Debug APK is at `app/build/outputs/apk/debug/app-debug.apk`. Install on your device or emulator.
 
+## Desktop App (Linux, Windows, macOS)
+
+**[Download the latest release](https://github.com/DGuckert/Butler/releases/latest)** -- native installers for all three platforms. A thin Electron shell around the same web app: pick your server once, it's remembered, everything else (including SSO) works exactly like the browser version since it just loads the real web app in the window.
+
+### Building from source
+
+```bash
+cd desktop
+npm install
+npm run dist:linux   # or dist:win, or dist:mac
+```
+
+Windows and Linux builds both work from a Linux host (Windows needs Wine installed). macOS has to be built on an actual Mac -- see `desktop/BUILD_ON_MAC.md`.
+
 ## Architecture
 
 - **Backend**: FastAPI (Python 3.10+) with SQLite

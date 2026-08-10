@@ -1,0 +1,55 @@
+{
+  "name": "butler-desktop",
+  "version": "1.1.0",
+  "description": "Butler desktop client",
+  "main": "src/main.js",
+  "author": {
+    "name": "Daniel Guckert",
+    "email": "danielguckert4@gmail.com"
+  },
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist:linux": "electron-builder --linux",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:all": "electron-builder -mwl"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.butler.desktop",
+    "productName": "Butler",
+    "files": [
+      "src/**/*"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "AudioVideo",
+      "icon": "src/icons/icon.png",
+      "maintainer": "Daniel Guckert <danielguckert4@gmail.com>"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "src/icons/icon.png"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "src/icons/icon.png",
+      "category": "public.app-category.music"
+    }
+  },
+  "homepage": "https://github.com/DGuckert/Butler"
+}
