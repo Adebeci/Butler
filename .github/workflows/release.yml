@@ -1,0 +1,28 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    name: Build release APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Grant execute permission for gradlew
+        run: chmod +x android/gradlew
+      - name: Build release APK
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon
+      - name: Upload APK as release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: butler-apk
+          path: android/app/build/outputs/apk/release/
