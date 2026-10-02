@@ -31,6 +31,13 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: android-actions/setup-android@v3
+        with:
+          api-level: 34
+          build-tools: 34.0.0
+          packages: |
+            build-tools;34.0.0
+            platforms;android-34
+            platform-tools
       - name: Grant execute permission for gradlew
         run: chmod +x android/gradlew
       - name: Build debug APK
