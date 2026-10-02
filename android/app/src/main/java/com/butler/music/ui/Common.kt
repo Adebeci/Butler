@@ -1,5 +1,6 @@
 package com.butler.music.ui
 
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -63,7 +64,8 @@ fun SongRow(
                     song.title,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.basicMarquee()
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
@@ -172,14 +174,16 @@ fun SongCard(song: Song, onClick: () -> Unit, modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.basicMarquee()
         )
         Text(
             song.artist,
             style = MaterialTheme.typography.bodySmall,
             color = Stone,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.basicMarquee()
         )
     }
 }

@@ -3,6 +3,7 @@ package com.butler.music.ui
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -99,13 +100,15 @@ fun NowPlayingSheet(player: PlayerController, onToggleLike: (com.butler.music.ne
                     style = MaterialTheme.typography.titleLarge,
                     textAlign = TextAlign.Center,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.basicMarquee()
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     song.artist,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Stone
+                    color = Stone,
+                    modifier = Modifier.basicMarquee()
                 )
                 Spacer(Modifier.height(20.dp))
 
@@ -176,7 +179,10 @@ fun NowPlayingSheet(player: PlayerController, onToggleLike: (com.butler.music.ne
                         positionMs = positionMs,
                         onSeek = { player.seekTo(it) }
                     )
-                } else if (state.queue.size > 1) {
+                } else {
+                    // Always show UP NEXT section — even if there's only one
+                    // song in the queue, so there's always a visible queue list.
+                    val upNext = state.queue.drop(state.currentIndex + 1).take(5)
                     Spacer(Modifier.height(28.dp))
                     Text(
                         "UP NEXT",
@@ -184,24 +190,33 @@ fun NowPlayingSheet(player: PlayerController, onToggleLike: (com.butler.music.ne
                         color = Stone,
                         modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
                     )
-                    Column(Modifier.fillMaxWidth()) {
-                        state.queue.drop(state.currentIndex + 1).take(5).forEach { upNext ->
-                            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-                                Text(
-                                    upNext.title,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    upNext.artist,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Stone,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
+                    if (upNext.isEmpty()) {
+                        Text(
+                            "No more songs in queue",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Stone.copy(alpha = 0.5f)
+                        )
+                    } else {
+                        Column(Modifier.fillMaxWidth()) {
+                            upNext.forEach { upNextSong ->
+                                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                                    Text(
+                                        upNextSong.title,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f).basicMarquee()
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        upNextSong.artist,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Stone,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.basicMarquee()
+                                    )
+                                }
                             }
                         }
                     }

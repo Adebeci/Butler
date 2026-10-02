@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional
 from database import init_db, get_db
-from auth import hash_password, verify_password, create_token, get_current_user, require_admin
+from auth import hash_password, hash_password_md5, verify_password, create_token, get_current_user, require_admin
 from downloader import search_youtube, ensure_downloaded, is_downloading, get_download_progress, pick_best_match, local_file_path
 from songs_db import search_local, add_track
 from recommend import get_recommendations, get_discovery, get_artist_tracks
@@ -85,8 +85,8 @@ def register(req: RegisterRequest):
 
     if db.execute("SELECT id FROM users WHERE username=?", (req.username,)).fetchone():
         db.close(); raise HTTPException(400, "Username taken")
-    db.execute("INSERT INTO users (username, password_hash) VALUES (?,?)",
-               (req.username, hash_password(req.password)))
+    db.execute("INSERT INTO users (username, password_hash, password_md5) VALUES (?,?,?)",
+               (req.username, hash_password(req.password), hash_password_md5(req.password)))
     db.commit()
     user = db.execute("SELECT * FROM users WHERE username=?", (req.username,)).fetchone()
     if invite:
@@ -125,8 +125,8 @@ def change_password(req: ChangePasswordRequest, user=Depends(get_current_user)):
     if len(req.new_password) < 6:
         raise HTTPException(400, "New password must be at least 6 characters")
     db = get_db()
-    db.execute("UPDATE users SET password_hash=? WHERE id=?",
-               (hash_password(req.new_password), user["id"]))
+    db.execute("UPDATE users SET password_hash=?, password_md5=? WHERE id=?",
+               (hash_password(req.new_password), hash_password_md5(req.new_password), user["id"]))
     db.commit(); db.close()
     return {"updated": True}
 
@@ -615,8 +615,10 @@ def liked_songs(user=Depends(get_current_user),
 @app.post("/playlists")
 def create_playlist(req: CreatePlaylistRequest, user=Depends(get_current_user)):
     db = get_db()
-    db.execute("INSERT INTO playlists (user_id,name,shared) VALUES (?,?,?)",
-               (user["id"], req.name, 1 if req.shared else 0))
+    max_order = db.execute("SELECT MAX(sort_order) FROM playlists WHERE user_id=?", (user["id"],)).fetchone()[0]
+    new_order = (max_order or 0) + 1
+    db.execute("INSERT INTO playlists (user_id,name,shared,sort_order) VALUES (?,?,?,?)",
+               (user["id"], req.name, 1 if req.shared else 0, new_order))
     db.commit()
     p = db.execute("SELECT * FROM playlists WHERE user_id=? ORDER BY id DESC LIMIT 1", (user["id"],)).fetchone()
     db.close()
@@ -629,7 +631,7 @@ def get_playlists(user=Depends(get_current_user)):
         SELECT p.*, u.username as owner_name FROM playlists p
         JOIN users u ON u.id=p.user_id
         WHERE p.user_id=? OR p.shared=1
-        ORDER BY p.user_id=? DESC, p.created_at DESC
+        ORDER BY p.user_id=? DESC, p.name ASC
     """, (user["id"], user["id"])).fetchall()
     result = []
     for p in rows:
@@ -675,6 +677,27 @@ def update_playlist(playlist_id: int, req: UpdatePlaylistRequest, user=Depends(g
         db.execute("UPDATE playlists SET shared=? WHERE id=?", (1 if req.shared else 0, playlist_id))
     db.commit(); db.close()
     return {"updated": True}
+
+@app.put("/playlists/reorder")
+def reorder_playlists(req: dict, user=Depends(get_current_user)):
+    """Reorder playlists manually. Body: {"order": [playlist_id, ...]}
+    Note: By default playlists are sorted alphabetically (by name ASC)."""
+    order = req.get("order", [])
+    if not isinstance(order, list):
+        raise HTTPException(400, "Invalid order")
+    db = get_db()
+    # Only allow reordering owned (non-shared) playlists
+    placeholders = ",".join("?" * len(order)) if order else "NULL"
+    existing = db.execute(
+        f"SELECT id FROM playlists WHERE id IN ({placeholders}) AND user_id=? AND shared=0",
+        (*order, user["id"])
+    ).fetchall()
+    valid_ids = {row["id"] for row in existing}
+    for i, pid in enumerate(order):
+        if pid in valid_ids:
+            db.execute("UPDATE playlists SET sort_order=? WHERE id=?", (i, pid))
+    db.commit(); db.close()
+    return {"reordered": True}
 
 @app.post("/playlists/{playlist_id}/songs/{youtube_id}")
 def add_to_playlist(playlist_id: int, youtube_id: str, user=Depends(get_current_user)):

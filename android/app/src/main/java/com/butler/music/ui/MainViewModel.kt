@@ -95,7 +95,14 @@ class MainViewModel(private val api: ApiClient, private val downloads: DownloadM
     fun loadRecentlyPlayed() = viewModelScope.launch {
         _recentlyPlayed.value = LoadState.Loading
         _recentlyPlayed.value = runCatching { api.history() }
-            .fold({ LoadState.Loaded(applyLiked(it)) }, { LoadState.Failed(it.message ?: "Couldn't load recently played") })
+            .fold({ LoadState.Loaded(applyLiked(dedupeByYoutubeId(it))) }, { LoadState.Failed(it.message ?: "Couldn't load recently played") })
+    }
+
+    /** Removes duplicate songs from a list (e.g. same song played multiple times),
+     * keeping only the first occurrence — matching the web app's behavior. */
+    private fun dedupeByYoutubeId(songs: List<Song>): List<Song> {
+        val seen = mutableSetOf<String>()
+        return songs.filter { seen.add(it.youtubeId) }
     }
 
     fun loadRecommendations() = viewModelScope.launch {

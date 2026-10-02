@@ -3,15 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Butler</title>
+<title>Vitrola</title>
 <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --bg:#17140F;--bg2:#221D15;--bg3:#2B241A;--bg4:#3D3527;--bg5:#4A4030;
-  --green:#C89B3C;--green2:#DBAF4E;--text:#F0E6CF;--muted:#9B9484;
-  --danger:#C75B4A;--oxblood:#A5453A;
-  --font-display:Georgia,'Iowan Old Style','Palatino Linotype',serif;
+  /* Apple Music-inspired dark theme */
+  --bg:#000000;--bg2:#121212;--bg3:#1C1C1C;--bg4:#252525;--bg5:#2F2F2F;
+  --green:#007AFF;--green2:#0062CC;--text:#FFFFFF;--muted:#A0A0A0;
+  --danger:#FF3B30;--oxblood:#FF3B30;--player-c1:var(--bg2);
+  --font-display:-apple-system,'SF Pro Display','SF Pro Text','Helvetica Neue',Arial,sans-serif;
   --sidebar-w:232px;--player-h:90px;--radius:4px;
 }
 body{background:var(--bg);color:var(--text);font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;height:100vh;height:100dvh;overflow:hidden;user-select:none;font-size:14px}
@@ -21,10 +22,14 @@ input,textarea,select{user-select:text;-webkit-user-select:text}
 ::-webkit-scrollbar-thumb{background:var(--bg5);border-radius:4px}
 
 /* ── Auth ── */
-#auth-screen{display:flex;align-items:center;justify-content:center;height:100vh;height:100dvh;flex-direction:column;gap:10px;background:linear-gradient(135deg,#17140F,#221D15)}
+#auth-screen{position:relative;display:flex;align-items:center;justify-content:center;height:100vh;height:100dvh;flex-direction:column;gap:10px;background:var(--bg)}
 .auth-logo{font-size:2rem;font-weight:800;margin-bottom:20px;font-family:var(--font-display);display:flex;align-items:center;justify-content:center;gap:12px}
 .auth-logo .butler-mark{width:44px;height:44px;flex-shrink:0}
 .auth-logo span{color:var(--green)}
+.language-control{display:flex;align-items:center;gap:2px;padding:2px;background:var(--bg3);border:1px solid var(--bg4);border-radius:5px}
+.language-control button{border:0;border-radius:3px;background:transparent;color:var(--muted);font-size:11px;font-weight:700;padding:5px 8px;cursor:pointer}
+.language-control button.active{background:var(--bg5);color:var(--text)}
+.auth-language{position:absolute;top:16px;right:18px}
 #auth-screen input{width:300px;padding:12px 16px;border-radius:var(--radius);border:1px solid var(--bg4);background:var(--bg3);color:var(--text);font-size:14px;outline:none;transition:border .15s}
 #auth-screen input:focus{border-color:var(--text)}
 .btn{padding:12px 32px;border-radius:24px;border:none;cursor:pointer;font-weight:700;font-size:13px;letter-spacing:.5px;transition:all .15s}
@@ -45,10 +50,14 @@ input,textarea,select{user-select:text;-webkit-user-select:text}
 #body{display:flex;flex:1;overflow:hidden;gap:2px;padding:2px}
 
 /* ── Sidebar ── */
-#sidebar{width:var(--sidebar-w);background:var(--bg2);border-radius:8px;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden;transition:width .2s}
-.sidebar-logo{padding:20px 16px 8px;font-size:1.1rem;font-weight:800;letter-spacing:-.5px;flex-shrink:0;font-family:var(--font-display);display:flex;align-items:center;gap:10px}
+#sidebar{position:relative;width:var(--sidebar-w);background:var(--bg2);border-radius:8px;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden;transition:width .2s}#sidebar-resize{position:absolute;top:0;right:-3px;width:6px;height:100%;cursor:col-resize;z-index:2;border-radius:3px;transition:background .2s}#sidebar-resize:hover{background:rgba(255,255,255,.08)}#sidebar:hover #sidebar-resize{background:rgba(255,255,255,.05)}
+.sidebar-logo{padding:20px 16px 8px;font-size:1.1rem;font-weight:800;letter-spacing:-.5px;flex-shrink:0;font-family:var(--font-display);display:flex;align-items:center;gap:10px;position:relative}
 .sidebar-logo .butler-mark{width:28px;height:28px;flex-shrink:0}
 .sidebar-logo span{color:var(--green)}
+.sidebar-logo .logo-link{cursor:pointer;display:inline-flex;align-items:center;gap:10px}
+.sidebar-logo .original-credit{position:absolute;left:0;top:100%;transform:translateY(8px);display:none;flex-direction:column;align-items:flex-start;gap:6px;background:var(--bg3);border-radius:var(--radius);padding:10px 14px;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:10;white-space:nowrap;font-size:11px;color:var(--muted);pointer-events:auto;border:1px solid var(--bg5)}
+.sidebar-logo .logo-link:hover + .original-credit{display:flex}
+.sidebar-logo .original-credit:hover{display:flex}
 .sidebar-section{padding:4px 8px;flex-shrink:0}
 .nav-btn{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:var(--radius);cursor:pointer;color:var(--muted);font-size:13px;font-weight:600;transition:color .1s,background .1s;white-space:nowrap}
 .nav-btn:hover{color:var(--text);background:var(--bg3)}
@@ -60,15 +69,18 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
 .lib-add{background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;line-height:1;padding:2px 6px;border-radius:50%;transition:color .1s,background .1s}
 .lib-add:hover{color:var(--text);background:var(--bg3)}
 #playlist-list{flex:1;overflow-y:auto;padding:0 8px 8px}
-.pl-item{display:flex;align-items:center;gap:10px;padding:8px;border-radius:var(--radius);cursor:pointer;transition:background .1s}
+.pl-item{display:flex;align-items:center;gap:10px;padding:8px;border-radius:var(--radius);cursor:pointer;transition:background .1s,opacity .15s}
 .pl-item:hover{background:var(--bg3)}
 .pl-item.active{background:var(--bg3)}
+.pl-item.drag-over{outline:2px solid var(--green);outline-offset:-2px}
+.pl-item.dragging{opacity:.4}
+/* drag-and-drop reordering removed: playlists are sorted alphabetically */
 .pl-thumb{width:40px;height:40px;border-radius:var(--radius);background:var(--bg4);flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:16px}
 .pl-thumb img{width:100%;height:100%;object-fit:cover}
 .pl-info{min-width:0}
 .pl-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-display)}
 .pl-meta{font-size:11px;color:var(--muted);margin-top:1px}
-.shared-badge{font-size:10px;background:#3A2E12;color:var(--green);padding:1px 6px;border-radius:8px;margin-left:4px;vertical-align:middle}
+.shared-badge{font-size:10px;background:var(--bg5);color:var(--green);padding:1px 6px;border-radius:8px;margin-left:4px;vertical-align:middle}
 
 /* ── Main ── */
 #main{flex:1;background:var(--bg2);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
@@ -85,6 +97,7 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
 #user-avatar{width:28px;height:28px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#000;flex-shrink:0}
 #user-dropdown{position:absolute;top:56px;right:20px;background:var(--bg3);border-radius:var(--radius);padding:4px;min-width:160px;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:100;display:none}
 #user-dropdown.open{display:block;animation:fadeIn .1s ease}
+.language-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;color:var(--muted);font-size:12px}
 .dd-item{padding:10px 14px;border-radius:var(--radius);cursor:pointer;font-size:13px;transition:background .1s}
 .dd-item:hover{background:var(--bg4)}
 .dd-item.danger{color:var(--danger)}
@@ -93,11 +106,11 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 
 /* ── Hero ── */
-.view-hero{padding:20px;display:flex;align-items:flex-end;gap:20px;min-height:180px;flex-shrink:0;background:linear-gradient(180deg,#3A2E1A 0%,transparent 100%)}
+.view-hero{padding:20px;display:flex;align-items:flex-end;gap:20px;min-height:180px;flex-shrink:0;background:linear-gradient(180deg,var(--bg3) 0%,transparent 100%)}
 .view-hero-art{width:140px;height:140px;border-radius:var(--radius);background:var(--bg3);flex-shrink:0;box-shadow:0 8px 32px rgba(0,0,0,.5);object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:3rem;overflow:hidden}
 .view-hero-art img{width:100%;height:100%;object-fit:cover}
 .view-hero-info p.eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
-.view-hero-info h1{font-size:clamp(1.2rem,4vw,2.2rem);font-weight:800;line-height:1.1;margin-bottom:6px;font-family:var(--font-display)}
+.view-hero-info h1{font-size:clamp(1.2rem,4vw,2.2rem);font-weight:800;line-height:1.1;margin-bottom:6px;font-family:var(--font-display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .view-hero-info p.sub{color:var(--muted);font-size:13px}
 .hero-actions{display:flex;align-items:center;gap:14px;padding:14px 20px;flex-shrink:0}
 .play-all-btn{width:48px;height:48px;border-radius:50%;background:var(--green);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .1s,background .1s;flex-shrink:0}
@@ -124,7 +137,7 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
 .song-card:hover .card-play{opacity:1;transform:translateY(0) scale(1)}
 .card-art{width:100%;aspect-ratio:1;background:var(--bg4);border-radius:var(--radius);margin-bottom:10px;position:relative;overflow:hidden}
 .card-art img{width:100%;height:100%;object-fit:cover;display:block}
-.card-art-fb{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--c1,#3D2817),var(--c2,#221208))}
+.card-art-fb{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--c1,#4a4a4a),var(--c2,#333333))}
 .card-play{position:absolute;bottom:6px;right:6px;width:38px;height:38px;background:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0;transform:translateY(6px) scale(.9);transition:opacity .2s,transform .2s;box-shadow:0 4px 16px rgba(0,0,0,.5);border:none;cursor:pointer}
 .card-play:hover{background:var(--green2);transform:translateY(0) scale(1.06)!important}
 .card-play svg{margin-left:3px}
@@ -174,23 +187,25 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
 .sf-btn.active{background:var(--text);color:var(--bg)}
 
 /* ── Player ── */
-#player{height:var(--player-h);background:var(--bg2);border-top:1px solid #1a1a1a;display:grid;grid-template-columns:1fr 2fr 1fr;align-items:center;padding:0 20px;gap:12px;flex-shrink:0}
+#player{height:var(--player-h);background:var(--player-c1);border-top:1px solid var(--bg5);display:grid;grid-template-columns:1fr 2fr 1fr;align-items:center;padding:0 20px;gap:12px;flex-shrink:0;transition:background .2s}
 body.player-idle{--player-h:0px}
 body.player-idle #player{display:none}
 #now-playing{display:flex;align-items:center;gap:10px;min-width:0;overflow:hidden}
 #now-art{width:52px;height:52px;border-radius:var(--radius);background:var(--bg3);flex-shrink:0;object-fit:cover;display:none}
 #now-info{min-width:0;flex:1;overflow:hidden}
-#now-title{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#now-artist{font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#now-title{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;display:block}
+#now-title.marquee{white-space:nowrap;overflow:visible;display:inline-block;animation:marquee 8s linear infinite paused;min-width:100%;max-width:none;cursor:default}
+#now-title.marquee:hover{animation-play-state:running}
+#now-artist{font-size:11px;color:rgba(255,255,255,.52);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #now-like{background:none;border:none;color:var(--muted);cursor:pointer;flex-shrink:0;padding:4px;transition:color .15s;display:flex;align-items:center}
 #now-like.liked{color:var(--green)}
 #controls{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0}
 #ctrl-row{display:flex;align-items:center;gap:10px}
-.ctrl{background:none;border:none;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:color .15s,transform .1s;padding:4px;border-radius:50%;width:30px;height:30px}
+.ctrl{background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:color .15s,transform .1s;padding:4px;border-radius:50%;width:30px;height:30px}
 .ctrl:hover{color:var(--text);transform:scale(1.1)}
 .ctrl.active{color:var(--green)}
 #btn-play{width:34px;height:34px;background:var(--text);border-radius:50%;color:var(--bg);flex-shrink:0}
-#btn-play:hover{background:#F7F0DE;transform:scale(1.06)!important}
+#btn-play:hover{background:rgba(255,255,255,.12);transform:scale(1.06)!important}
 #progress-row{display:flex;align-items:center;gap:8px;width:100%}
 .ptime{font-size:11px;color:var(--muted);min-width:34px;font-variant-numeric:tabular-nums}
 #ptime-end{text-align:right}
@@ -208,8 +223,11 @@ body.player-idle #player{display:none}
 #vol-slider::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--text);cursor:pointer}
 
 /* ── Queue panel ── */
-#queue-panel{width:0;background:var(--bg2);border-radius:8px;overflow:hidden;transition:width .2s ease;flex-shrink:0;display:flex;flex-direction:column}
-#queue-panel.open{width:260px}
+#queue-panel{width:0;background:var(--bg2);border-radius:8px;overflow:hidden;border-left:1px solid var(--bg3);transition:width .1s ease;flex-shrink:0;display:flex;flex-direction:column;position:relative}
+#queue-panel.open{width:var(--qp-w,260px)}
+#queue-panel.open #qp-resize-handle{opacity:.5}
+#queue-panel.open #qp-resize-handle:hover{opacity:1}
+#qp-resize-handle{position:absolute;top:0;left:0;bottom:0;width:12px;cursor:col-resize;z-index:1;opacity:0;transition:opacity .1s}
 #qp-header{padding:14px 16px;font-size:14px;font-weight:700;border-bottom:1px solid var(--bg3);flex-shrink:0;display:flex;align-items:center;justify-content:space-between}
 #qp-clear{background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;transition:color .1s}
 #qp-clear:hover{color:var(--text)}
@@ -221,7 +239,9 @@ body.player-idle #player{display:none}
 .qi-n{font-size:12px;color:var(--muted);width:14px;text-align:center;flex-shrink:0}
 .qi-art{width:34px;height:34px;border-radius:var(--radius);background:var(--bg4);flex-shrink:0;object-fit:cover}
 .qi-info{min-width:0;flex:1}
-.qi-title{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qi-title{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;display:block}
+.qi-title.marquee,.pl-name.marquee,.ci-text.marquee{white-space:nowrap;overflow:visible;box-orient:normal;display:inline-block;animation:marquee 6s linear infinite paused;min-width:100%;max-width:none}
+@keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-100%)}}
 .qi-artist{font-size:11px;color:var(--muted)}
 .qi-remove{background:none;border:none;color:transparent;cursor:pointer;font-size:14px;padding:2px;flex-shrink:0;transition:color .1s}
 .qi:hover .qi-remove{color:var(--muted)}
@@ -236,7 +256,7 @@ body.player-idle #player{display:none}
 .ci.red{color:var(--danger)}
 .ci-sep{border:none;border-top:1px solid var(--bg4);margin:4px 0}
 .ci-sub{position:relative}
-.ci-sub-menu{position:absolute;left:100%;top:-4px;background:var(--bg3);border-radius:var(--radius);padding:4px;min-width:160px;box-shadow:0 8px 32px rgba(0,0,0,.6);display:none;max-height:240px;overflow-y:auto;z-index:1001}
+.ci-sub-menu{position:absolute;left:100%;top:-4px;background:var(--bg3);border-radius:var(--radius);padding:4px;min-width:160px;box-shadow:0 8px 32px rgba(0,0,0,.6);display:none;max-height:400px;overflow-y:auto;z-index:1001}
 .ci-sub:hover .ci-sub-menu{display:block}
 
 /* ── Pills / toasts ── */
@@ -281,7 +301,7 @@ body.player-idle #player{display:none}
   #now-playing{max-width:35vw}
   #right-ctrl{display:none}
   #ptime-start,#ptime-end{display:none}
-  #queue-panel.open{width:220px}
+  #queue-panel.open{width:var(--qp-w,220px)}
   .search-icon-btn{display:flex}
 
   /* Touch has no :hover, so anything gated behind it is invisible and
@@ -297,7 +317,7 @@ body.player-idle #player{display:none}
 #bottom-nav{display:none;position:fixed;bottom:var(--player-h);left:0;right:0;background:var(--bg2);border-top:1px solid var(--bg3);z-index:30;justify-content:space-around;padding:8px 0 max(8px,env(safe-area-inset-bottom))}
 #np-screen{display:none;position:fixed;inset:0;z-index:90;background:var(--bg);flex-direction:column;overflow:hidden}
 #np-screen.open{display:flex}
-#np-bg{position:absolute;inset:0;background:linear-gradient(180deg,var(--np-c1,#3D2817) 0%,var(--bg) 65%);opacity:.55;pointer-events:none}
+#np-bg{position:absolute;inset:0;background:linear-gradient(180deg,var(--np-c1,#4a4a4a) 0%,var(--bg) 65%);opacity:.55;pointer-events:none}
 #np-top{position:relative;display:flex;align-items:center;justify-content:space-between;padding:calc(14px + env(safe-area-inset-top)) 18px 10px;flex-shrink:0}
 #np-close{background:none;border:none;color:var(--text);cursor:pointer;padding:6px;display:flex}
 #np-eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
@@ -352,7 +372,11 @@ body.player-idle #player{display:none}
 <body>
 
 <div id="auth-screen">
-  <div class="auth-logo"><svg class="butler-mark" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bmWingLAuth" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#DBAF4E"/><stop offset="100%" stop-color="#A9812F"/></linearGradient><linearGradient id="bmWingRAuth" x1="100%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#DBAF4E"/><stop offset="100%" stop-color="#A9812F"/></linearGradient></defs><path d="M38,72 C70,86 100,104 116,120 C100,136 70,154 38,168 C30,146 30,94 38,72 Z" fill="url(#bmWingLAuth)"/><path d="M202,72 C170,86 140,104 124,120 C140,136 170,154 202,168 C210,146 210,94 202,72 Z" fill="url(#bmWingRAuth)"/><circle cx="120" cy="120" r="13" fill="#A5453A"/><circle cx="120" cy="120" r="13" fill="none" stroke="#17140F" stroke-width="1.5" opacity="0.4"/></svg> <span class="logo-text">Butler</span></div>
+  <div class="language-control auth-language" role="group" aria-label="Language">
+    <button type="button" data-language="en" title="English">EN</button>
+    <button type="button" data-language="es" title="Spanish">ES</button>
+  </div>
+  <div class="auth-logo"><img class="butler-mark" src="/icons/favicon.svg" alt=""><span class="logo-text">Vitrola</span></div>
   <input id="au-user" type="text" placeholder="Username" autocomplete="off">
   <input id="au-pass" type="password" placeholder="Password">
   <input id="au-invite" type="text" placeholder="Invite code" style="display:none" autocomplete="off">
@@ -367,7 +391,8 @@ body.player-idle #player{display:none}
 <div id="app">
   <div id="body">
     <div id="sidebar">
-      <div class="sidebar-logo"><svg class="butler-mark" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bmWingLSide" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#DBAF4E"/><stop offset="100%" stop-color="#A9812F"/></linearGradient><linearGradient id="bmWingRSide" x1="100%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#DBAF4E"/><stop offset="100%" stop-color="#A9812F"/></linearGradient></defs><path d="M38,72 C70,86 100,104 116,120 C100,136 70,154 38,168 C30,146 30,94 38,72 Z" fill="url(#bmWingLSide)"/><path d="M202,72 C170,86 140,104 124,120 C140,136 170,154 202,168 C210,146 210,94 202,72 Z" fill="url(#bmWingRSide)"/><circle cx="120" cy="120" r="13" fill="#A5453A"/><circle cx="120" cy="120" r="13" fill="none" stroke="#17140F" stroke-width="1.5" opacity="0.4"/></svg> <span class="logo-text">Butler</span></div>
+      <div id="sidebar-resize"></div>
+      <div class="sidebar-logo"><span class="logo-link"><img class="butler-mark" src="/icons/favicon.svg" alt=""> <span class="logo-text">Vitrola</span></span><div class="original-credit"><img src="/icons/favicon.svg" alt="Butler"><div>Agradecimientos al proyecto original</div><a href="https://github.com/DGuckert/Butler" target="_blank" rel="noopener">Butler by DGuckert</a></div></div>
       <div class="sidebar-section">
         <div class="nav-btn active" data-v="home"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span>Home</span></div>
         <div class="nav-btn" data-v="search"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg><span>Search</span></div>
@@ -409,6 +434,10 @@ body.player-idle #player{display:none}
               <div class="dd-item" id="dd-apikeys">API keys</div>
               <div class="dd-item" id="dd-scrobble">Scrobbling</div>
               <div class="dd-item" id="dd-kbd">Keyboard shortcuts</div>
+              <div class="language-row"><span class="language-label">Language</span><div class="language-control" role="group" aria-label="Language">
+                <button type="button" data-language="en" title="English">EN</button>
+                <button type="button" data-language="es" title="Spanish">ES</button>
+              </div></div>
               <hr class="ci-sep">
               <div class="dd-item danger" id="dd-logout">Log out</div>
             </div>
@@ -419,6 +448,7 @@ body.player-idle #player{display:none}
     </div>
 
     <div id="queue-panel">
+      <div id="qp-resize-handle"></div>
       <div id="qp-header">Queue <button id="qp-clear">Clear</button></div>
       <div id="queue-list"></div>
     </div>
@@ -629,6 +659,17 @@ body.player-idle #player{display:none}
   </div>
 </div>
 
+<div id="refresh-modal" class="modal-bg" style="display:none">
+  <div class="modal">
+    <h3>Continue?</h3>
+    <p style="color:var(--muted);margin-bottom:16px">This will stop music playback. Continue?</p>
+    <div class="modal-btns">
+      <button class="btn btn-outline btn-sm" id="refresh-cancel">Cancel</button>
+      <button class="btn btn-green" id="refresh-confirm">Continue</button>
+    </div>
+  </div>
+</div>
+
 <div id="ctx">
   <div class="ci" id="ci-play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Play</div>
   <div class="ci" id="ci-queue"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 6h16v2H4zm4 5h12v2H8zm-4 5h16v2H4z"/></svg>Add to queue</div>
@@ -652,6 +693,7 @@ const BASE='';
 let token=localStorage.getItem('bt')||'';
 let me=null,likedSet=new Set(),playlists=[];
 let queue=[],qi=0,currentSong=null,isPlaying=false,scrobbledFor=null;
+let albumThemeRequest=0;
 
 // ── Cross-device identity + remote control ──────────────────────────
 const DEVICE_ID=(()=>{let id=localStorage.getItem('device_id');if(!id){id='dev_'+Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem('device_id',id)}return id})();
@@ -674,7 +716,15 @@ function sendHeartbeat(){
   }).catch(()=>{});
 }
 setInterval(sendHeartbeat,4000);
-window.addEventListener('beforeunload',()=>{try{navigator.sendBeacon&&navigator.sendBeacon('')}catch(e){}});
+window.addEventListener('beforeunload',e=>{
+  // If F5/Ctrl+R was pressed, our custom modal already handled it — don't
+  // also show the browser's native dialog (that would be two popups).
+  if(!_pendingRefresh&&isPlaying&&currentSong){
+    e.preventDefault();
+    e.returnValue='';
+  }
+  try{navigator.sendBeacon&&navigator.sendBeacon('')}catch(err){}
+});
 
 async function pollRemoteCommands(){
   try{
@@ -701,10 +751,11 @@ let sortState={liked:'date',lib:'date',dlOnly:false};
 let searchFilter='all';
 let crossfadeNode=null,audioCtx=null;
 
-const PALS={a:['#8a6a2a','#3d2e12'],b:['#a5453a','#4a1f1a'],c:['#6a7a3a','#2e3617'],d:['#b0783a','#4d3016'],e:['#8a3a4a','#3d1a20'],f:['#7a8a5a','#353d28'],g:['#c89b3c','#5c4419'],h:['#9a5a2a','#432712'],i:['#6a4a3a','#2e211a'],j:['#a56a4a','#4a2f20'],k:['#5a6a4a','#282e20'],l:['#8a5a5a','#3d2828'],m:['#7a5a2a','#352712'],n:['#4a6a6a','#20302e'],o:['#a58a4a','#4a3d20'],p:['#6a4a5a','#2e2028'],q:['#5a7a6a','#28352e'],r:['#8a4a3a','#3d211a'],s:['#7a6a4a','#352e20'],t:['#4a5a3a','#20281a'],u:['#9a7a5a','#433528'],v:['#4a5a6a','#20282e'],w:['#6a3a4a','#2e1a20'],x:['#8a6a4a','#3d3020'],y:['#5a6a5a','#282e28'],z:['#7a5a3a','#352817']};
+/* Apple Music-style grayscale palette: neutral, clean gradients for artist initials */
+const PALS={a:['#4a4a4a','#333333'],b:['#FF3B30','#CC2F26'],c:['#8e8e93','#6e6e74'],d:['#4a4a4a','#333333'],e:['#FF3B30','#CC2F26'],f:['#8e8e93','#6e6e74'],g:['#007AFF','#0062CC'],h:['#4a4a4a','#333333'],i:['#8e8e93','#6e6e74'],j:['#4a4a4a','#333333'],k:['#8e8e93','#6e6e74'],l:['#4a4a4a','#333333'],m:['#FF3B30','#CC2F26'],n:['#8e8e93','#6e6e74'],o:['#4a4a4a','#333333'],p:['#8e8e93','#6e6e74'],q:['#007AFF','#0062CC'],r:['#FF3B30','#CC2F26'],s:['#4a4a4a','#333333'],t:['#8e8e93','#6e6e74'],u:['#4a4a4a','#333333'],v:['#007AFF','#0062CC'],w:['#8e8e93','#6e6e74'],x:['#4a4a4a','#333333'],y:['#8e8e93','#6e6e74'],z:['#4a4a4a','#333333']};
 const ICONS=[`<svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.2" width="48" height="48"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`,`<svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.2" width="48" height="48"><rect x="2" y="8" width="20" height="12" rx="2"/><circle cx="12" cy="14" r="2"/></svg>`,`<svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.2" width="48" height="48"><path d="M3 18v-6a9 9 0 0118 0v6"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3v5zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3v5z"/></svg>`,`<svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.2" width="48" height="48"><path d="M12 2a3 3 0 013 3v7a3 3 0 01-6 0V5a3 3 0 013-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v3M8 22h8"/></svg>`,`<svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.2" width="48" height="48"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>`];
 
-function pal(s){const k=(s||'a')[0].toLowerCase();return PALS[k]||['#3D2817','#221208']}
+function pal(s){const k=(s||'a')[0].toLowerCase();return PALS[k]||['#4a4a4a','#333333']}
 
 async function api(m,p,b){
   const h={'Content-Type':'application/json'};
@@ -717,6 +768,99 @@ async function api(m,p,b){
 function fmt(s){if(!s&&s!==0)return'-';s=Math.floor(s);return`${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`}
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
 function dedupe(a,k){const s=new Set();return a.filter(x=>{if(s.has(x[k]))return false;s.add(x[k]);return true})}
+
+const SPANISH={
+  'Username':'Usuario','Password':'Contraseña','Invite code':'Código de invitación','Invite code (first SSO sign-in only)':'Código de invitación (solo en el primer inicio con SSO)','or':'o','No account?':'¿No tienes cuenta?','Have an account?':'¿Ya tienes cuenta?','Sign up':'Registrarse','Log In':'Iniciar sesión',
+  'Language':'Idioma','English':'Inglés','Spanish':'Español','Home':'Inicio','Search':'Buscar','Your Library':'Tu biblioteca','New playlist':'Nueva lista','Import from Spotify':'Importar de Spotify','Liked Songs':'Canciones favoritas','For You':'Para ti','Discover':'Descubrir','History':'Historial','Family / Admin':'Familia / Administración','Change password':'Cambiar contraseña','API keys':'Claves de API','Scrobbling':'Historial de reproducciones','Keyboard shortcuts':'Atajos de teclado','Log out':'Cerrar sesión',
+  'Queue':'Cola de reproducción','Clear':'Vaciar','Shuffle':'Aleatorio','Shuffle (S)':'Aleatorio (S)','Previous':'Anterior','Play/Pause (Space)':'Reproducir/Pausar (Espacio)','Next':'Siguiente','Repeat (R)':'Repetir (R)','Repeat':'Repetir','Repeat off':'Repetición desactivada','Repeat all':'Repetir todo','Repeat one':'Repetir una','Close':'Cerrar','Now Playing':'Reproduciendo','Lyrics':'Letras','Downloading…':'Descargando…','Finding on YouTube…':'Buscando en YouTube…',
+  'Recently Played':'Reproducidas recientemente','Nothing played yet.':'Todavía no has reproducido nada.','Search for a song to get started.':'Busca una canción para empezar.','Recommended For You':'Recomendadas para ti','Based on your plays and liked songs':'Según lo que reproduces y tus canciones favoritas','Play or like some songs first.':'Reproduce o marca algunas canciones primero.','Vitrola will learn your taste.':'Vitrola aprenderá tus gustos.','No new songs found.':'No se encontraron canciones nuevas.','Songs you haven\'t heard yet':'Canciones que aún no has escuchado','Fresh Picks':'Novedades','All':'Todo','Downloaded':'Descargadas','In library':'En la biblioteca','Artists, songs…':'Artistas, canciones…','Searching…':'Buscando…','No results.':'Sin resultados.','Playlist':'Lista de reproducción','Playlists':'Listas de reproducción','No liked songs yet.':'Todavía no tienes canciones favoritas.','Click ♥ on any song.':'Pulsa ♥ en cualquier canción.','No playlists yet.':'Todavía no hay listas.','Tap + to create one.':'Pulsa + para crear una.','Shared':'Compartida','No songs yet.':'Todavía no hay canciones.','Right-click any song and choose "Add to playlist".':'Haz clic derecho en una canción y elige «Añadir a la lista».','Artist':'Artista','No tracks found for this artist yet.':'Todavía no se encontraron canciones de este artista.','Couldn\'t load':'No se pudo cargar',
+  'Share':'Compartir','Share with family':'Compartir con la familia','Unshare':'Dejar de compartir','Rename':'Cambiar nombre','Delete':'Eliminar','Delete from library':'Eliminar de la biblioteca','Remove from playlist':'Quitar de la lista','Like':'Me gusta','Unlike':'Ya no me gusta','Play':'Reproducir','Add to queue':'Añadir a la cola','Add to playlist':'Añadir a una lista','Sort:':'Ordenar:','Date added':'Fecha de incorporación','Title':'Título','Duration':'Duración','Downloaded only':'Solo descargadas','★ For you':'★ Para ti','✦ New':'✦ Nueva',
+  'New Playlist':'Nueva lista de reproducción','My playlist':'Mi lista','Create':'Crear','Cancel':'Cancelar','Change Password':'Cambiar contraseña','Current password':'Contraseña actual','New password (min 6 chars)':'Nueva contraseña (mín. 6 caracteres)','Confirm new password':'Confirmar contraseña nueva','Update':'Actualizar','API Keys':'Claves de API','Copy this now — it won\'t be shown again:':'Cópiala ahora: no volverá a mostrarse.','Copy':'Copiar','Revoke':'Revocar','Close':'Cerrar','Generate key':'Generar clave','Label (e.g. "DSub on my phone")':'Etiqueta (p. ej., «DSub en mi teléfono»)','Scrobbling':'Historial de reproducciones','Enabled':'Activado','Save':'Guardar','Rename Playlist':'Cambiar nombre de la lista','New name':'Nombre nuevo',
+  'Import Spotify Playlist':'Importar lista de Spotify','Paste a Spotify playlist URL or ID':'Pega la URL o el ID de una lista de Spotify','Share with family':'Compartir con la familia','Starting…':'Iniciando…','Go to playlist':'Ir a la lista','Loading…':'Cargando…','Load more':'Cargar más','Connect Spotify first':'Conecta Spotify primero','Connect Spotify':'Conectar Spotify','Disconnect':'Desconectar','Playlist URL':'URL de la lista','Import Playlist':'Importar lista','Import CSV':'Importar CSV','Upload Exportify CSV':'Subir CSV de Exportify','Playlist name':'Nombre de la lista','(optional)':'(opcional)','Leave blank to use filename':'Déjalo vacío para usar el nombre del archivo','OR, CSV FALLBACK':'O IMPORTAR CSV','Upload':'Subir','Searching YouTube…':'Buscando en YouTube…','Done! Songs are downloading in the background.':'¡Listo! Las canciones se están descargando en segundo plano.','No new files found':'No se encontraron archivos nuevos','Server Settings':'Ajustes del servidor','Members':'Miembros','Username':'Nombre de usuario','Joined':'Se unió','Invite Codes':'Códigos de invitación','Generate Code':'Generar código','Copy':'Copiar','No unused invite codes. Generate one above.':'No hay códigos disponibles. Genera uno arriba.','Used codes:':'Códigos usados:','Lossless downloads':'Descargas sin pérdida','Automatic downloads':'Descargas automáticas','Manual uploads':'Archivos subidos manualmente','Scan Now':'Analizar ahora',
+  'Keep the original downloaded audio format (usually Opus or AAC) instead of transcoding every song to mp3. Applies to songs downloaded from now on — existing mp3 files aren\'t affected.':'Conservar el formato de audio original (normalmente Opus o AAC) en lugar de convertirlo a MP3. Se aplica a las próximas descargas; los archivos existentes no cambian.','Fetch new songs via yt-dlp on play/search when they\'re not already in the library. Turn off to freeze the library to what\'s already downloaded or manually uploaded — playback of existing songs isn\'t affected either way.':'Buscar canciones con yt-dlp al reproducirlas o buscarlas si aún no están en la biblioteca. Desactívalo para limitarla a lo ya descargado o subido; las canciones existentes seguirán reproduciéndose.','Drop audio files into the server\'s uploads folder and they\'re indexed automatically every few minutes. Scan now to index immediately.':'Copia archivos de audio en la carpeta de subidas del servidor; se indexan automáticamente cada pocos minutos. Analízalos ahora para indexarlos de inmediato.',
+  'Reports finished plays to':'Envía las reproducciones completas a','Grab a personal token from your ListenBrainz profile settings and paste it below.':'Obtén un token personal en los ajustes de ListenBrainz y pégalo aquí.','ListenBrainz user token':'Token de usuario de ListenBrainz','Use a key as the password in a third-party Subsonic app (DSub, Symfonium, etc.) or any client that only supports username/password — handy if you sign in here with SSO and have no regular password to give those apps. Your username stays the same.':'Usa una clave como contraseña en una app Subsonic (DSub, Symfonium, etc.) o en otro cliente que solo admita usuario y contraseña. Es útil si inicias sesión con SSO. Tu nombre de usuario no cambia.',
+  'Please enter a Spotify playlist URL':'Introduce la URL de una lista de Spotify','Please choose a CSV file':'Selecciona un archivo CSV','File must be a .csv':'El archivo debe ser .csv','CSV is too large (max 5 MB)':'El CSV es demasiado grande (máximo 5 MB)','Import another':'Importar otra','Connect Spotify first':'Conecta Spotify primero','Spotify isn\'t connected yet. Ask the admin to open this page and click':'Spotify aún no está conectado. Pide al administrador que abra esta página y pulse','No matching lyrics found for this recording.':'No se encontraron letras para esta grabación.','Couldn\'t load lyrics.':'No se pudieron cargar las letras.','Loading lyrics…':'Cargando letras…','Play the song first':'Reproduce la canción primero','Could not find':'No se encontró','Failed to load keys':'No se pudieron cargar las claves','Failed to update:':'No se pudo actualizar:','Scan failed:':'Error al analizar:','Password updated':'Contraseña actualizada','Scrobbling settings saved':'Ajustes de reproducciones guardados','Copied to clipboard':'Copiado','Key revoked':'Clave revocada','Failed to revoke:':'No se pudo revocar:','Could not auto-copy — selected for you, copy manually':'No se pudo copiar automáticamente; el texto está seleccionado para copiarlo.','Copy this now — it won\'t be shown again:':'Cópiala ahora: no volverá a mostrarse.','Continue?':'¿Continuar?','Continue':'Continuar','This will stop music playback. Continue?':'Al refrescar la página, la música se parará. ¿Quieres continuar de todas formas?'
+};
+const ENGLISH=Object.fromEntries(Object.entries(SPANISH).map(([english,spanish])=>[spanish,english]));
+let language=localStorage.getItem('vitrola-language')==='es'?'es':'en';
+const TRANSLATION_SKIP='input,textarea,code,pre,[data-user-content],.card-title,.card-sub-artist,.s-title,.s-artist-sub,.s-artist,.qi-title,.qi-artist,.pl-name,.artist-bio,.np-lyric-line,#user-name,#now-title,#now-artist,#np-title,#np-artist';
+function translateValue(value){
+  const leading=value.match(/^\s*/)[0],trailing=value.match(/\s*$/)[0],text=value.trim();
+  let translated=(language==='es'?SPANISH[text]:ENGLISH[text])||text;
+  if(translated===text&&language==='es'){
+    let m;
+    if((m=text.match(/^(Good morning|Good afternoon|Good evening), (.+)$/)))translated=`${({ 'Good morning':'Buenos días','Good afternoon':'Buenas tardes','Good evening':'Buenas noches' })[m[1]]}, ${m[2]}`;
+    else if((m=text.match(/^By (.+) • (\d+)$/)))translated=`De ${m[1]} • ${m[2]}`;
+    else if((m=text.match(/^(\d+) songs?$/)))translated=`${m[1]} ${Number(m[1])===1?'canción':'canciones'}`;
+    else if((m=text.match(/^Searching YouTube for (\d+) songs…$/)))translated=`Buscando ${m[1]} canciones en YouTube…`;
+    else if((m=text.match(/^Searching YouTube… (\d+)%$/)))translated=`Buscando en YouTube… ${m[1]}%`;
+    else if((m=text.match(/^(\d+) of (\d+) processed • (\d+) matched$/)))translated=`${m[1]} de ${m[2]} procesadas • ${m[3]} coincidencias`;
+    else if((m=text.match(/^Imported: (\d+) songs matched$/)))translated=`Importadas: ${m[1]} canciones coincidentes`;
+    else if((m=text.match(/^Added: (.+)$/)))translated=`Añadido: ${m[1]}`;
+    else if((m=text.match(/^Indexed (\d+) new songs?$/)))translated=`Indexadas ${m[1]} canciones nuevas`;
+    else if((m=text.match(/^Connected as (.+)$/)))translated=`Conectado como ${m[1]}`;
+  }else if(translated===text&&language==='en'){
+    let m;
+    if((m=text.match(/^(Buenos días|Buenas tardes|Buenas noches), (.+)$/)))translated=`${({ 'Buenos días':'Good morning','Buenas tardes':'Good afternoon','Buenas noches':'Good evening' })[m[1]]}, ${m[2]}`;
+    else if((m=text.match(/^De (.+) • (\d+)$/)))translated=`By ${m[1]} • ${m[2]}`;
+    else if((m=text.match(/^(\d+) canciones?$/)))translated=`${m[1]} ${Number(m[1])===1?'song':'songs'}`;
+    else if((m=text.match(/^Buscando (\d+) canciones en YouTube…$/)))translated=`Searching YouTube for ${m[1]} songs…`;
+    else if((m=text.match(/^Buscando en YouTube… (\d+)%$/)))translated=`Searching YouTube… ${m[1]}%`;
+    else if((m=text.match(/^(\d+) de (\d+) procesadas • (\d+) coincidencias$/)))translated=`${m[1]} of ${m[2]} processed • ${m[3]} matched`;
+    else if((m=text.match(/^Importadas: (\d+) canciones coincidentes$/)))translated=`Imported: ${m[1]} songs matched`;
+    else if((m=text.match(/^Añadido: (.+)$/)))translated=`Added: ${m[1]}`;
+    else if((m=text.match(/^Indexadas (\d+) canciones nuevas$/)))translated=`Indexed ${m[1]} new song${Number(m[1])===1?'':'s'}`;
+    else if((m=text.match(/^Conectado como (.+)$/)))translated=`Connected as ${m[1]}`;
+  }
+  return translated===text?value:leading+translated+trailing;
+}
+function translateSubtree(root){
+  if(root.nodeType===Node.TEXT_NODE){
+    if(!root.parentElement?.closest(TRANSLATION_SKIP)){
+      const translated=translateValue(root.nodeValue);
+      if(translated!==root.nodeValue)root.nodeValue=translated;
+    }
+    return;
+  }
+  if(root.nodeType!==Node.ELEMENT_NODE&&root.nodeType!==Node.DOCUMENT_FRAGMENT_NODE)return;
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+  let textNode;
+  while((textNode=walker.nextNode()))if(!textNode.parentElement?.closest(TRANSLATION_SKIP)){
+    const translated=translateValue(textNode.nodeValue);
+    if(translated!==textNode.nodeValue)textNode.nodeValue=translated;
+  }
+  const selector='[placeholder],[title],[aria-label]';
+  const elements=[];
+  if(root.nodeType===Node.ELEMENT_NODE&&root.matches(selector))elements.push(root);
+  elements.push(...root.querySelectorAll(selector));
+  elements.forEach(el=>['placeholder','title','aria-label'].forEach(attr=>{
+    if(el.hasAttribute(attr))el.setAttribute(attr,translateValue(el.getAttribute(attr)));
+  }));
+}
+function setLanguage(next,persist=true){
+  if(next!=='en'&&next!=='es')return;
+  language=next;
+  document.documentElement.lang=next;
+  if(persist)localStorage.setItem('vitrola-language',next);
+  translateSubtree(document.body);
+  document.querySelectorAll('[data-language]').forEach(button=>{
+    button.classList.toggle('active',button.dataset.language===next);
+    button.setAttribute('aria-pressed',button.dataset.language===next?'true':'false');
+  });
+}
+document.querySelectorAll('[data-language]').forEach(button=>button.onclick=()=>setLanguage(button.dataset.language));
+setLanguage(language,false);
+new MutationObserver(records=>records.forEach(record=>{
+  if(record.type==='characterData')translateSubtree(record.target);
+  else if(record.type==='attributes'){
+    const attr=record.attributeName;
+    const value=record.target.getAttribute(attr);
+    const translated=translateValue(value);
+    if(translated!==value)record.target.setAttribute(attr,translated);
+  }
+  else record.addedNodes.forEach(translateSubtree);
+})).observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['placeholder','title','aria-label']});
+
 function toast(msg,dur=2500){const el=document.getElementById('toast');el.textContent=msg;el.style.display='block';clearTimeout(el._t);el._t=setTimeout(()=>el.style.display='none',dur)}
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -813,6 +957,7 @@ async function loadPlaylists(){
     </div>`;
   }).join('');
   el.querySelectorAll('.pl-item').forEach(el=>el.onclick=()=>nav('playlist',el.dataset.pid));
+  applyMarquee('#playlist-list .pl-name');
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────
@@ -831,6 +976,15 @@ document.getElementById('nav-back').onclick=()=>{if(navIdx>0){navIdx--;navLock=t
 document.getElementById('nav-fwd').onclick=()=>{if(navIdx<navHist.length-1){navIdx++;navLock=true;const h=navHist[navIdx];nav(h.view,h.param);navLock=false}};
 document.querySelectorAll('.nav-btn[data-v],.bn-btn[data-v]').forEach(b=>b.onclick=()=>nav(b.dataset.v));
 
+// ── Sidebar resize ───────────────────────────────────────────────────────────────
+const SIDEBAR_MIN=200,SIDEBAR_MAX=600;
+function applySidebarWidth(w){const clamped=Math.max(SIDEBAR_MIN,Math.min(SIDEBAR_MAX,w));document.documentElement.style.setProperty('--sidebar-w',clamped+'px');localStorage.setItem('vitrola-sidebar-w',String(clamped))}
+const savedW=localStorage.getItem('vitrola-sidebar-w');if(savedW){document.documentElement.style.setProperty('--sidebar-w',Math.max(SIDEBAR_MIN,Math.min(SIDEBAR_MAX,parseInt(savedW)))+'px')}
+let isResizing=false,startX=0,startW=0;
+document.getElementById('sidebar-resize').onmousedown=e=>{e.preventDefault();isResizing=true;startX=e.clientX;startW=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-w'))||232;document.body.style.userSelect='none'}
+document.addEventListener('mousemove',e=>{if(!isResizing)return;const delta=e.clientX-startX;applySidebarWidth(startW+delta)})
+document.addEventListener('mouseup',()=>{isResizing=false;document.body.style.userSelect='auto'})
+document.getElementById('sidebar-resize').addEventListener('dblclick',()=>{const cur=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-w'))||232;applySidebarWidth(cur<=320?280:232)})
 // ── User menu ─────────────────────────────────────────────────────────────────
 document.getElementById('user-menu-btn').onclick=e=>{e.stopPropagation();document.getElementById('user-dropdown').classList.toggle('open')};
 document.getElementById('dd-logout').onclick=()=>{token='';localStorage.removeItem('bt');location.reload()};
@@ -1058,7 +1212,7 @@ async function renderRecommended(c){
   try{
     const d=await api('GET','/recommendations');
     const v=c.querySelector('.view');
-    if(!d.songs.length){v.innerHTML=`<div style="font-size:1.8rem;font-weight:800">For You</div><div class="empty-state">Play or like some songs first.<p>Butler will learn your taste.</p></div>`;return}
+    if(!d.songs.length){v.innerHTML=`<div style="font-size:1.8rem;font-weight:800">For You</div><div class="empty-state">Play or like some songs first.<p>Vitrola will learn your taste.</p></div>`;return}
     v.innerHTML=`<div style="font-size:1.8rem;font-weight:800;margin-bottom:4px">For You</div>
       <div style="color:var(--muted);font-size:13px;margin-bottom:20px">Based on your plays and liked songs</div>
       <div class="card-grid">${d.songs.map((s,i)=>cardH(s,i)).join('')}</div>
@@ -1087,8 +1241,8 @@ async function renderDiscovery(c){
 async function renderLiked(c){
   const d=await api('GET',`/liked?sort=${sortState.liked}`);
   c.innerHTML=`
-    <div class="view-hero" style="background:linear-gradient(180deg,#A5453A 0%,transparent 100%)">
-      <div class="view-hero-art" style="background:linear-gradient(135deg,#A5453A,#D98A7B)"><span style="font-size:3rem">♥</span></div>
+    <div class="view-hero" style="background:linear-gradient(180deg,var(--bg3) 0%,transparent 100%)">
+      <div class="view-hero-art" style="background:linear-gradient(135deg,var(--bg4),var(--bg5))"><span style="font-size:3rem">♥</span></div>
       <div class="view-hero-info">
         <p class="eyebrow">Playlist</p>
         <h1>Liked Songs</h1>
@@ -1132,6 +1286,7 @@ async function renderPlaylists(c){
       </div>`;
     }).join('');
     el.querySelectorAll('.pl-item').forEach(item=>item.onclick=()=>nav('playlist',item.dataset.pid));
+    applyMarquee('#pl-view-list .pl-name');
   }
   document.getElementById('pl-view-add').onclick=()=>{document.getElementById('pl-modal').style.display='flex';document.getElementById('pl-name').focus()};
 }
@@ -1140,8 +1295,11 @@ async function renderPlaylists(c){
 async function renderHistory(c){
   c.innerHTML=`<div class="view"><div style="font-size:1.8rem;font-weight:800;margin-bottom:20px">History</div><div class="empty-state">Loading…</div></div>`;
   const d=await api('GET','/history');
-  c.querySelector('.view').innerHTML=`<div style="font-size:1.8rem;font-weight:800;margin-bottom:20px">History</div>`+(d.history.length?tblH(d.history):'<div class="empty-state">Nothing played yet.</div>');
-  bindTbl(d.history,d.history);
+  // Show each song only once — the most recent play (API already returns
+  // DESC by played_at), avoiding duplicates from repeated plays.
+  const unique=dedupe(d.history,'youtube_id');
+  c.querySelector('.view').innerHTML=`<div style="font-size:1.8rem;font-weight:800;margin-bottom:20px">History</div>`+(unique.length?tblH(unique):'<div class="empty-state">Nothing played yet.</div>');
+  bindTbl(unique,unique);
 }
 
 // ── Playlist ──────────────────────────────────────────────────────────────────
@@ -1156,7 +1314,7 @@ async function renderPlaylist(c,pid){
       <div class="view-hero-art">${artSrc?`<img src="${artSrc}" onerror="this.style.display='none'" alt="">`:`<span style="font-size:3rem">♫</span>`}</div>
       <div class="view-hero-info">
         <p class="eyebrow">Playlist${d.playlist.shared?' • Shared':''}</p>
-        <h1>${esc(d.playlist.name)}</h1>
+        <h1 class="pl-view-title">${esc(d.playlist.name)}</h1>
         <p class="sub">${esc(d.playlist.owner_name)} • ${d.songs.length} song${d.songs.length!==1?'s':''}</p>
       </div>
     </div>
@@ -1173,6 +1331,7 @@ async function renderPlaylist(c,pid){
   c.insertAdjacentHTML('beforeend',inner);
   if(d.songs.length)document.getElementById('pl-play-all').onclick=()=>{queue=[...d.songs];qi=0;playSong(queue[0])};
   bindTbl(d.songs,d.songs);
+  applyMarquee('.view-hero-info h1');
 }
 
 async function renderArtist(c,artistName){
@@ -1188,7 +1347,7 @@ async function renderArtist(c,artistName){
       <div class="view-hero-art" style="border-radius:50%">${artSrc?`<img src="${artSrc}" onerror="this.style.display='none'" alt="">`:`<span style="font-size:3rem">\u266a</span>`}</div>
       <div class="view-hero-info">
         <p class="eyebrow">Artist</p>
-        <h1>${esc(d.artist||artistName)}</h1>
+        <h1 class="artist-view-title">${esc(d.artist||artistName)}</h1>
         <p class="sub">${d.songs.length} song${d.songs.length!==1?'s':''}</p>
       </div>
     </div>
@@ -1201,6 +1360,7 @@ async function renderArtist(c,artistName){
   c.insertAdjacentHTML('beforeend',inner);
   if(d.songs.length)document.getElementById('artist-play-all').onclick=()=>{queue=[...d.songs];qi=0;const s=queue[0];s.youtube_id?playSong(s):resolvePlay(s)};
   bindTbl(d.songs,d.songs);
+  applyMarquee('.view-hero-info h1');
 }
 
 async function toggleShare(pid,newVal){
@@ -1445,7 +1605,24 @@ function showCtx(e,song){
   li.innerHTML=li.innerHTML.replace(/Like$|Unlike$/,'');
   li.appendChild(document.createTextNode(likedSet.has(song?.youtube_id)?'Unlike':'Like'));
   const pll=document.getElementById('ci-pl-list');
-  pll.innerHTML=playlists.filter(p=>p.user_id===me.id||p.shared).map(p=>`<div class="ci" data-pid="${p.id}">${esc(p.name)}</div>`).join('');
+  // Build playlist items: "New playlist" option first, then existing playlists sorted by name
+  const userPlaylists=playlists.filter(p=>p.user_id===me.id||p.shared).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  pll.innerHTML=`<div class="ci" id="ci-pl-new"><svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15" style="margin-right:6px"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>New playlist</div><hr class="ci-sep">`+userPlaylists.map(p=>`<div class="ci" data-pid="${p.id}"><span class="ci-text" style="min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</span></div>`).join('');
+  // Handle "New playlist" click
+  document.getElementById('ci-pl-new').onclick=async()=>{
+    if(!ctxSong?.youtube_id){toast('Play the song first to add it');return}
+    const name=prompt('Playlist name:');
+    if(!name?.trim())return;
+    try{
+      const d=await api('POST','/playlists',{name:name.trim()});
+      await api('POST',`/playlists/${d.id}/songs/${ctxSong.youtube_id}`);
+      toast('Created and added');
+      loadPlaylists();
+    }catch(e){toast(e.message)}
+    closeCtx();
+  };
+  applyMarquee('#ctx .ci-text');
+  // Handle existing playlist clicks
   pll.querySelectorAll('.ci[data-pid]').forEach(el=>el.onclick=async()=>{
     if(!ctxSong?.youtube_id){toast('Play the song first to add it');return}
     try{await api('POST',`/playlists/${el.dataset.pid}/songs/${ctxSong.youtube_id}`);toast('Added to playlist');}
@@ -1489,23 +1666,82 @@ document.getElementById('ci-remove-pl').onclick=async()=>{
   closeCtx();
 };
 document.getElementById('btn-queue').onclick=()=>{qOpen=!qOpen;document.getElementById('queue-panel').classList.toggle('open',qOpen);document.getElementById('btn-queue').classList.toggle('active',qOpen)};
+
+// ── Queue panel resize ────────────────────────────────────────────────────────
+let qpResizing=false,qpStartW=0,qpStartX=0;
+const qpStorageKey='vitrola_qp_width';
+const qpMin=140,qpMax=500;
+function qpApplyWidth(w){
+  document.documentElement.style.setProperty('--qp-w',Math.round(w)+'px');
+  localStorage.setItem(qpStorageKey,Math.round(w));
+}
+function qpInitWidth(){
+  const saved=parseInt(localStorage.getItem(qpStorageKey)||'',10);
+  const w=!isNaN(saved)&&saved>=qpMin&&saved<=qpMax?saved:260;
+  qpApplyWidth(w);
+}
+qpInitWidth();
+document.getElementById('qp-resize-handle').addEventListener('mousedown',e=>{
+  if(qOpen){e.preventDefault();qpResizing=true;qpStartW=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--qp-w'))||260;qpStartX=e.clientX;document.body.style.cursor='col-resize'}
+  else{e.stopPropagation();qOpen=true;document.getElementById('queue-panel').classList.add('open');document.getElementById('btn-queue').classList.add('active');e.preventDefault();qpResizing=true;qpStartW=qpMin;qpStartX=e.clientX;document.body.style.cursor='col-resize'}
+});
+document.addEventListener('mousemove',e=>{
+  if(!qpResizing)return;
+  let w=qpStartW-(e.clientX-qpStartX);
+  w=Math.max(qpMin,Math.min(qpMax,w));
+  qpApplyWidth(w);
+});
+document.addEventListener('mouseup',()=>{
+  if(qpResizing){qpResizing=false;document.body.style.cursor=''}
+});
 document.getElementById('qp-clear').onclick=()=>{queue=[];qi=0;updQ()};
 function updQ(){
   const el=document.getElementById('queue-list');
-  if(!queue.length){el.innerHTML='<div style="padding:16px;color:var(--muted);font-size:13px">Queue is empty</div>';return}
-  el.innerHTML=queue.map((s,i)=>{
+  // When the queue is empty but a song is playing (e.g. started from the
+  // context menu or now-playing screen), show the current song so the
+  // queue panel always has something to display instead of "Queue is empty".
+  const effective = queue.length ? queue : (currentSong ? [currentSong] : []);
+  if(!effective.length){el.innerHTML='<div style="padding:16px;color:var(--muted);font-size:13px">Queue is empty</div>';return}
+  const hasRemove = !!queue.length;  // don't show remove on the fallback current-song
+  el.innerHTML=effective.map((s,i)=>{
     const[c1,c2]=pal(s.artist||s.title);
     const th=s.youtube_id?`https://img.youtube.com/vi/${s.youtube_id}/mqdefault.jpg`:'';
+    const titleEsc=esc(s.title);
+    const artistEsc=esc(s.artist||'-');
+    const fullTitle=`${artistEsc} - ${titleEsc}`;
     return`<div class="qi ${i===qi?'current':''}" data-qi="${i}">
       <div class="qi-n">${i===qi?'▶':i+1}</div>
       ${th?`<img class="qi-art" src="${th}" onerror="this.style.background='linear-gradient(135deg,${c1},${c2})'" alt="">`:`<div class="qi-art" style="background:linear-gradient(135deg,${c1},${c2})"></div>`}
-      <div class="qi-info"><div class="qi-title">${esc(s.title)}</div><div class="qi-artist">${esc(s.artist||'')}</div></div>
-      <button class="qi-remove" onclick="removeFromQ(${i})">✕</button>
+      <div class="qi-info"><div class="qi-title" data-title="${fullTitle}">${fullTitle}</div><div class="qi-artist">${artistEsc}</div></div>
+      ${hasRemove?`<button class="qi-remove" onclick="removeFromQ(${i})">✕</button>`:''}
     </div>`;
   }).join('');
-  el.querySelectorAll('.qi').forEach(item=>item.onclick=e=>{if(e.target.closest('.qi-remove'))return;qi=parseInt(item.dataset.qi);playSong(queue[qi])});
+  // Detect overflow and apply marquee to long titles; reset the animation
+  // position whenever the mouse enters/leaves so it always starts fresh.
+  applyMarquee('#queue-list .qi-title');
+  el.querySelectorAll('.qi').forEach(item=>item.onclick=e=>{if(e.target.closest('.qi-remove'))return;qi=parseInt(item.dataset.qi);playSong(effective[qi])});
 }
 function removeFromQ(i){queue.splice(i,1);if(qi>=queue.length)qi=Math.max(0,queue.length-1);updQ()}
+
+// ── Marquee helper ──────────────────────────────────────────────────────────────
+// Applies the same marquee-on-hover-with-reset behavior to any element that
+// may have overflowing text (queue titles, playlist names, etc.).
+function applyMarquee(selector){
+  requestAnimationFrame(()=>{
+    document.querySelectorAll(selector).forEach(t=>{
+      const needsMarquee=t.scrollWidth>t.clientWidth;
+      t.classList.toggle('marquee',needsMarquee);
+      if(!needsMarquee){t.onmouseenter=null;t.onmouseleave=null;return}
+      t.onmouseenter=()=>{t.style.animationPlayState='running'};
+      t.onmouseleave=()=>{
+        t.style.animationPlayState='paused';
+        t.classList.remove('marquee');
+        void t.offsetWidth; // force reflow
+        t.classList.add('marquee');
+      };
+    });
+  });
+}
 
 // ── Resolve ───────────────────────────────────────────────────────────────────
 async function resolvePlay(song){
@@ -1522,19 +1758,70 @@ async function resolvePlay(song){
 const audio=document.getElementById('audio');
 const audioNext=document.getElementById('audio-next');
 
+function themeFromArtwork(src,fallback){
+  const request=++albumThemeRequest;
+  const rootStyle=document.documentElement.style;
+  const nowPlaying=document.getElementById('np-screen');
+  rootStyle.setProperty('--green','#007AFF');
+  rootStyle.setProperty('--green2','#0062CC');
+  nowPlaying.style.setProperty('--np-c1',fallback);
+  rootStyle.setProperty('--player-c1',fallback);
+  if(!src)return;
+
+  const image=new Image();
+  image.crossOrigin='anonymous';
+  image.onload=()=>{
+    if(request!==albumThemeRequest)return;
+    const canvas=document.createElement('canvas');
+    canvas.width=32;canvas.height=32;
+    const context=canvas.getContext('2d',{willReadFrequently:true});
+    if(!context)return;
+    try{
+      context.drawImage(image,0,0,32,32);
+      const pixels=context.getImageData(0,0,32,32).data;
+      const hues=new Uint16Array(30);
+      for(let i=0;i<pixels.length;i+=4){
+        const r=pixels[i],g=pixels[i+1],b=pixels[i+2];
+        const max=Math.max(r,g,b),min=Math.min(r,g,b),delta=max-min;
+        if(max<42||delta<24)continue;
+        let hue;
+        if(max===r)hue=60*(((g-b)/delta)%6);
+        else if(max===g)hue=60*((b-r)/delta+2);
+        else hue=60*((r-g)/delta+4);
+        if(hue<0)hue+=360;
+        hues[Math.floor(hue/12)%30]++;
+      }
+      let dominant=0;
+      for(let i=1;i<hues.length;i++)if(hues[i]>hues[dominant])dominant=i;
+      if(!hues[dominant])return;
+      const hue=dominant*12+6;
+      rootStyle.setProperty('--green',`hsl(${hue} 68% 62%)`);
+      rootStyle.setProperty('--green2',`hsl(${hue} 74% 71%)`);
+      nowPlaying.style.setProperty('--np-c1',`hsl(${hue} 48% 38%)`);
+      rootStyle.setProperty('--player-c1',`hsl(${hue} 35% 40%)`);
+    }catch(e){}
+  };
+  image.src=src;
+}
+
 async function playSong(song){
   currentSong=song;isPlaying=true;
   document.body.classList.remove('player-idle');
-  document.getElementById('now-title').textContent=song.title;
+  const nowTitle=document.getElementById('now-title');
+  nowTitle.textContent=song.title;
+  nowTitle.classList.remove('marquee');
+  requestAnimationFrame(()=>{nowTitle.classList.toggle('marquee',nowTitle.scrollWidth>nowTitle.clientWidth);});
   document.getElementById('now-artist').textContent=song.artist||'';
   const art=document.getElementById('now-art');
   const th=song.youtube_id?`https://img.youtube.com/vi/${song.youtube_id}/mqdefault.jpg`:(song.thumbnail||'');
-  if(th){art.src=th;art.style.display='block'}else{art.style.display='none'}
+  const artwork=song.thumbnail||th;
+  if(artwork){art.crossOrigin='anonymous';art.src=artwork;art.style.display='block'}else{art.style.display='none'}
   document.getElementById('np-title').textContent=song.title;
   document.getElementById('np-artist').textContent=song.artist||'';
-  document.getElementById('np-art').src=song.thumbnail||th||'';
+  const npArt=document.getElementById('np-art');
+  npArt.crossOrigin='anonymous';npArt.src=artwork||'';
   const npc1=pal(song.artist)[0];
-  document.getElementById('np-screen').style.setProperty('--np-c1',npc1);
+  themeFromArtwork(artwork,npc1);
   npLyricsLoadedFor=null;
   if(document.getElementById('np-screen').classList.contains('open'))loadLyricsFor(song.youtube_id);
   scrobbledFor=null;
@@ -1543,7 +1830,7 @@ async function playSong(song){
     const a=r.dataset.yid===song.youtube_id;
     r.classList.toggle('active',a);r.classList.toggle('playing',a&&isPlaying);
   });
-  updQ();document.title=`${song.title} - Butler`;
+  updQ();document.title=`${song.title} - Vitrola`;
   // Start download progress bar
   document.getElementById('dl-progress-bar').style.width='0%';
   const data=await api('POST',`/songs/play/${song.youtube_id}`);
@@ -1805,6 +2092,29 @@ document.getElementById('apikeys-modal').addEventListener('mousedown',e=>{if(e.t
 document.getElementById('rename-modal').addEventListener('mousedown',e=>{if(e.target===document.getElementById('rename-modal'))document.getElementById('rename-modal').style.display='none'});
 document.getElementById('spotify-import-btn').onclick=()=>nav('spotify-import');
 
+// ── Refresh confirmation ────────────────────────────────────────────────────────
+// Intercept F5 / Ctrl+R so we can show a custom popup before the page reloads,
+// since a refresh stops music playback.
+let _pendingRefresh=false;
+document.getElementById('refresh-modal').addEventListener('mousedown',e=>{if(e.target===document.getElementById('refresh-modal'))closeRefreshModal()});
+document.getElementById('refresh-cancel').onclick=closeRefreshModal;
+document.getElementById('refresh-confirm').onclick=()=>{closeRefreshModal();_pendingRefresh=true;location.reload()};
+function closeRefreshModal(){document.getElementById('refresh-modal').style.display='none';_pendingRefresh=false}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('refresh-modal').style.display==='flex')closeRefreshModal()});
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT')return;
+  if(!currentSong||!isPlaying)return;
+  if(e.key==='F5'||(e.ctrlKey&&e.key==='r')){
+    // Mark as pending so beforeunload doesn't also show its native dialog.
+    _pendingRefresh=true;
+    e.preventDefault();
+    if(document.getElementById('refresh-modal').style.display!=='flex'){
+      document.getElementById('refresh-modal').style.display='flex';
+      e.stopPropagation();
+    }
+  }
+});
+
 async function renderSpotifyImport(c){
   let auth={connected:false,is_admin:false,configured:false};
   try{auth=await api('GET','/spotify/auth/status')}catch(e){}
@@ -1820,7 +2130,7 @@ async function renderSpotifyImport(c){
         ? `<div style="background:var(--bg3);border:1px solid var(--bg4);padding:18px;border-radius:var(--radius);margin-bottom:18px">
              <div style="font-weight:700;margin-bottom:6px">Connect Spotify first</div>
              <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5">
-               Spotify's API now requires a logged-in user. Click below to authorize Butler once,
+               Spotify's API now requires a logged-in user. Click below to authorize Vitrola once,
                and we'll store a refresh token and the whole family can import after that.
                ${auth.configured?'':'<br><br><b style="color:var(--danger)">SPOTIFY_REDIRECT_URI is not set in .env yet.</b>'}
              </div>
@@ -1865,7 +2175,7 @@ async function renderSpotifyImport(c){
         <a href="https://exportify.net" target="_blank" rel="noopener" style="color:var(--green)">exportify.net</a> and upload the CSV here.
       </div>
       <input id="sp-csv-file" type="file" accept=".csv,text/csv"
-        style="width:100%;padding:10px;border-radius:var(--radius);border:1px solid var(--bg4);background:var(--bg3);color:#fff;font-size:13px;margin-bottom:12px;display:block">
+        style="width:100%;padding:10px;border-radius:var(--radius);border:1px solid var(--bg4);background:var(--bg3);color:var(--text);font-size:13px;margin-bottom:12px;display:block">
       <div style="font-size:13px;font-weight:600;margin-bottom:6px">Playlist name <span style="color:var(--muted);font-weight:400">(optional)</span></div>
       <input id="sp-csv-name" type="text" placeholder="Leave blank to use filename"
         style="width:100%;padding:12px 16px;border-radius:var(--radius);border:1px solid var(--bg4);background:var(--bg3);color:var(--text);font-size:14px;outline:none;margin-bottom:12px;display:block;-webkit-user-select:text;user-select:text">
@@ -2041,8 +2351,8 @@ boot();
 #butler-remote {
   position: fixed; left: 50%; top: 12px; transform: translateX(-50%);
   z-index: 9999; display: none;
-  background: linear-gradient(135deg,#C89B3C,#5C4419);
-  color: #fff; border-radius: 999px;
+  background: rgba(0,0,0,.72);
+  color: var(--text); border-radius: 999px;
   padding: 8px 14px 8px 12px;
   font: 600 13px system-ui, -apple-system, Segoe UI, sans-serif;
   cursor: default; max-width: 92vw; overflow: hidden;
@@ -2052,13 +2362,13 @@ boot();
 #butler-remote.entering { display: flex; animation: butler-slide-in .55s cubic-bezier(.34,1.56,.64,1) both, butler-glow 2.4s ease-in-out 1s infinite; }
 #butler-remote.leaving  { animation: butler-slide-out .35s ease-in both; }
 #butler-remote .be-bars { display: inline-flex; align-items: end; gap: 2px; height: 14px; }
-#butler-remote .be-bars i { width: 3px; height: 100%; background: #fff; border-radius: 2px; transform-origin: bottom; animation: butler-eq .9s ease-in-out infinite; }
+#butler-remote .be-bars i { width: 3px; height: 100%; background: var(--green); border-radius: 2px; transform-origin: bottom; animation: butler-eq .9s ease-in-out infinite; }
 #butler-remote .be-bars i:nth-child(2) { animation-duration: .7s; animation-delay: .15s; }
 #butler-remote .be-bars i:nth-child(3) { animation-duration: 1.05s; animation-delay: .3s; }
 #butler-remote .be-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70vw; }
 #butler-remote .be-controls { display: inline-flex; gap: 4px; margin-left: 4px; }
-#butler-remote .be-btn { background: rgba(255,255,255,.18); border: none; color: #fff; border-radius: 999px; width: 26px; height: 26px; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-#butler-remote .be-btn:hover { background: rgba(255,255,255,.32); }
+#butler-remote .be-btn { background: rgba(255,255,255,.12); border: none; color: var(--text); border-radius: 999px; width: 26px; height: 26px; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+#butler-remote .be-btn:hover { background: rgba(255,255,255,.25); }
 </style>
 <div id=butler-remote>
   <span class=be-bars><i></i><i></i><i></i></span>

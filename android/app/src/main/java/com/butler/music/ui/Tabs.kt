@@ -1,5 +1,6 @@
 package com.butler.music.ui
 
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -260,6 +261,25 @@ fun LibraryTab(
                     }
                 }
             }
+            // About / credits footer — always shown at the bottom of the library
+            item {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        "Based on Butler",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Stone
+                    )
+                    Text(
+                        "github.com/DGuckert/Butler",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Stone.copy(alpha = 0.5f)
+                    )
+                }
+            }
         }
     }
 
@@ -439,7 +459,7 @@ private fun PlaylistRow(playlist: Playlist, onClick: () -> Unit) {
         SongArtwork(playlist.thumbnail, size = 52.dp)
         Spacer(Modifier.width(12.dp))
         Column {
-            Text(playlist.name, style = MaterialTheme.typography.titleMedium)
+            Text(playlist.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.basicMarquee())
             Text(
                 "${playlist.songCount} songs" + if (playlist.shared) " · shared" else "",
                 style = MaterialTheme.typography.bodySmall,

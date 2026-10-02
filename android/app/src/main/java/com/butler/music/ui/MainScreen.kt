@@ -1,6 +1,7 @@
 package com.butler.music.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
@@ -194,13 +195,14 @@ private fun MiniPlayerBar(state: com.butler.music.playback.PlayerUiState, onClic
                 SongArtwork(song.thumbnail, size = 40.dp)
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(song.title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium)
+                    Text(song.title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium, modifier = Modifier.basicMarquee())
                     Text(
                         song.artist,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Stone
+                        color = Stone,
+                        modifier = Modifier.basicMarquee()
                     )
                 }
                 IconButton(onClick = onPlayPause) {

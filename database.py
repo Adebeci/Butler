@@ -41,6 +41,7 @@ def init_db():
             user_id INTEGER NOT NULL,
             name TEXT NOT NULL,
             shared INTEGER DEFAULT 0,
+            sort_order INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id)
         )
@@ -128,6 +129,16 @@ def init_db():
     """)
 
     c.execute("""
+        CREATE TABLE IF NOT EXISTS lyrics (
+            youtube_id TEXT PRIMARY KEY,
+            plain TEXT,
+            synced TEXT,
+            source TEXT,
+            fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    c.execute("""
         CREATE TABLE IF NOT EXISTS artist_info (
             artist_lower TEXT PRIMARY KEY,
             display_name TEXT,
@@ -166,6 +177,12 @@ def init_db():
         c.execute("ALTER TABLE playlists ADD COLUMN shared INTEGER DEFAULT 0")
     except: pass
 
+    # Add password_md5 column for Subsonic token auth (t+s scheme) compatibility
+    # This allows clients like Arpeggi that use token-based auth to work with Butler
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN password_md5 TEXT")
+    except: pass
+
     # OIDC / SSO login support. password_hash stays NOT NULL for every user
     # (including OIDC-only accounts, which get an unusable locked hash --
     # see auth.py create_oidc_locked_hash) so we avoid an SQLite table
@@ -185,6 +202,15 @@ def init_db():
         ON users(oidc_issuer, oidc_subject)
         WHERE oidc_subject IS NOT NULL
     """)
+
+    # Add sort_order column for manual playlist reordering
+    try:
+        c.execute("ALTER TABLE playlists ADD COLUMN sort_order INTEGER DEFAULT 0")
+    except: pass
+    # Backfill: set sort_order = id for existing playlists (preserves current order)
+    try:
+        c.execute("UPDATE playlists SET sort_order = id WHERE sort_order IS NULL OR sort_order = 0")
+    except: pass
 
     # Backfills
     c.execute("""

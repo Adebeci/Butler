@@ -1,0 +1,38 @@
+services:
+  butler:
+    build: .
+    image: butler-butler:latest
+    container_name: butler
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+
+      
+    environment:
+      # Always win over whatever's in .env (even a blank value there),
+      # so data always lands on the persisted volume below rather than
+      # silently falling back to a path inside the container's own
+      # writable layer, which would vanish on the next recreate.
+      MUSIC_DIR: /data/music
+      DATABASE_URL: /data/butler.db
+      SONGS_DB_PATH: /data/songs_meta.db
+      UPLOADS_DIR: /data/uploads
+    volumes:
+      - butler_data:/data
+      - /mnt/music:/data/music
+      # A real host folder (not just the named volume) so it's easy to drop
+      # files in from outside Docker -- over SMB/NAS, scp, a file manager,
+      # whatever's convenient -- without needing to exec into the container.
+      - ./uploads:/data/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+volumes:
+  butler_data:
+    name: butler_data

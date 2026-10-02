@@ -4,19 +4,6 @@ Subsonic API compatibility layer.
 Implements the core of the Subsonic REST API (http://www.subsonic.org/pages/api.jsp)
 so existing Subsonic-compatible clients (DSub, Substreamer, Symfonium, play:Sub,
 Amperfy, etc.) can browse and stream a Butler library without any custom client.
-
-Scope: enough of the ID3-tag-based browsing scheme (getArtists/getArtist/getAlbum),
-streaming, cover art, search, playlists, starring, and scrobble/now-playing to cover
-what typical mobile clients need for day-to-day listening. Not implemented: the
-older folder-browsing endpoints (getMusicDirectory), podcasts, internet radio,
-bookmarks, shares, or XML responses (JSON only, via f=json, which is what modern
-clients request).
-
-Auth: supports both plain-password scheme (?p=...) and the salted-token scheme
-(?t=<token>&s=<salt>). Butler stores md5(password) in password_md5 field for
-token auth — this md5 hash lets us verify md5(password + salt) == token without
-needing the original plaintext, while the bcrypt password_hash remains the
-security boundary for the web/API auth path.
 """
 import base64
 import hashlib
@@ -41,12 +28,6 @@ API_VERSION = "1.16.1"
 
 
 def _ok(**data):
-    # openSubsonic is mandatory, not decorative -- OpenSubsonic-aware
-    # clients (Substreamer, Symfonium, ...) use it to decide whether to
-    # trust extended features at all. Without it, a client can fall back
-    # to a much more conservative plain-Subsonic feature set, which is
-    # very likely why playlists (an area OpenSubsonic clients often gate
-    # behind capability detection) looked broken before this was added.
     resp = {"status": "ok", "version": API_VERSION, "type": "butler", "serverVersion": "1.0.0", "openSubsonic": True}
     resp.update(data)
     return JSONResponse({"subsonic-response": resp})
@@ -61,14 +42,6 @@ def _fail(code: int, message: str):
 
 @router.api_route("/getOpenSubsonicExtensions.view", methods=["GET", "POST", "HEAD"])
 async def get_open_subsonic_extensions(request: Request):
-    """OpenSubsonic-aware clients call this early on to decide what
-    extended functionality they can rely on. Only advertise what's
-    genuinely implemented to spec -- songLyrics is (see
-    getLyricsBySongId above). Butler's API keys are NOT the same thing as
-    the real apiKeyAuthentication extension (that means a top-level
-    apiKey= query param plus a tokenInfo.view endpoint, neither of which
-    exist here -- ours works as a password substitute instead), so it's
-    deliberately not claimed here even though it might look related."""
     user, err = await _authenticate(request)
     if not user:
         return err
@@ -115,13 +88,6 @@ async def _authenticate(request: Request):
     token = params.get("t")
     salt = params.get("s")
 
-    # Handle enc: prefix for encrypted passwords (hex-encoded)
-    if password and password.startswith("enc:"):
-        try:
-            password = bytes.fromhex(password[4:]).decode()
-        except Exception:
-            pass
-
     if not username:
         return None, _fail(10, "Required parameter 'u' is missing.")
 
@@ -132,35 +98,30 @@ async def _authenticate(request: Request):
     if not row:
         return None, _fail(40, "Wrong username or password.")
 
-    # Subsonic token auth scheme: t=<md5(password + salt)>&s=<salt>
-    # The client computes token = md5(password + salt) and sends it.
-    # Since Butler currently stores password_hash as plaintext (bcrypt is
-    # disabled), we can compute md5(password_hash + salt) to verify the token.
-    # When bcrypt gets re-enabled, password_hash will be hashed and we'll
-    # need password_md5 (md5 of original password) instead — but md5 is
-    # one-way too, so the Subsonic t+s scheme fundamentally can't work
-    # with salted slow hashes. This is documented in the module docstring.
+    stored_password = row["password_hash"]
+
+    # 1. Autenticación mediante Token + Salt MD5 (el modo por defecto de la mayoría de apps)
     if token and salt:
-        # password_hash is plaintext for local accounts, so we can use it directly
-        candidate = hashlib.md5((row["password_hash"] + salt).encode()).hexdigest()
-        if candidate == token:
+        expected_token = hashlib.md5((stored_password + salt).encode('utf-8')).hexdigest()
+        if token.lower() == expected_token.lower():
             return dict(row), params
-        return None, _fail(40, "Wrong username or password.")
 
-    # Plain password auth (?p=...) or API key fallback
-    if not password:
-        return None, _fail(10, "Required parameter 'u' or 'p' is missing.")
+    # 2. Autenticación por contraseña directa / texto plano (parametro ?p=)
+    elif password:
+        if password.startswith("enc:"):
+            try:
+                password = bytes.fromhex(password[4:]).decode()
+            except Exception:
+                pass
 
-    if verify_password(password, row["password_hash"]):
-        return dict(row), params
+        if verify_password(password, stored_password):
+            return dict(row), params
 
-    # Password didn't match a local password — try it as an API key.
-    # This lets SSO-only accounts (whose password_hash is a locked random
-    # value) still authenticate Subsonic clients using a generated key.
-    import api_keys
-    key_user = api_keys.find_user_by_key(password)
-    if key_user and key_user["username"] == username:
-        return key_user, params
+        # Intento de autenticación usando API Key
+        import api_keys
+        key_user = api_keys.find_user_by_key(password)
+        if key_user and key_user["username"] == username:
+            return key_user, params
 
     return None, _fail(40, "Wrong username or password.")
 
@@ -493,16 +454,6 @@ def _albumlist_child(r) -> dict:
 
 @router.api_route("/getAlbumList2.view", methods=["GET", "POST", "HEAD"])
 async def get_album_list2(request: Request):
-    """The ID3-tag browsing scheme's album list -- what most modern clients'
-    "Albums" tab actually calls (getArtists/getArtist only covers browsing
-    by artist). Butler has no albums table, only songs grouped by
-    (artist, album), so every list type here is a GROUP BY over songs
-    rather than a real table scan.
-
-    byYear/byGenre aren't supported (Butler doesn't track either) and
-    fall back to alphabeticalByName rather than erroring -- a client
-    asking for a year range it can't get still gets *something* browsable
-    instead of a dead tab."""
     user, err = await _authenticate(request)
     if not user:
         return err
@@ -581,10 +532,6 @@ async def get_random_songs(request: Request):
 
 @router.api_route("/getGenres.view", methods=["GET", "POST", "HEAD"])
 async def get_genres(request: Request):
-    """Butler doesn't tag or store genre, so this is always empty --
-    returned as a valid empty list rather than omitted, since several
-    clients probe this on connect and treat a missing/erroring endpoint
-    as a broken server rather than just an empty Genres tab."""
     user, err = await _authenticate(request)
     if not user:
         return err
@@ -593,9 +540,6 @@ async def get_genres(request: Request):
 
 @router.api_route("/getNowPlaying.view", methods=["GET", "POST", "HEAD"])
 async def get_now_playing(request: Request):
-    """Butler doesn't track a live "currently playing" registry across
-    users -- returned empty rather than omitted, same reasoning as
-    getGenres above."""
     user, err = await _authenticate(request)
     if not user:
         return err
@@ -636,13 +580,6 @@ async def get_shares(request: Request):
 
 @router.api_route("/setRating.view", methods=["GET", "POST", "HEAD"])
 async def set_rating(request: Request):
-    """Subsonic's 0-5 star rating doesn't map to anything Butler stores --
-    the closest real equivalent is the like/star system already wired up
-    through star.view/unstar.view. Treated as a binary shim: any rating
-    >=1 stars the song, a rating of 0 unstars it. A client asking for a
-    3-star rating won't get a 3 back on the next fetch, but it also won't
-    error out, and the song lands in the same "liked" state a real 3-star
-    rating would have implied anyway."""
     user, err = await _authenticate(request)
     if not user:
         return err
@@ -708,11 +645,6 @@ async def delete_playlist(request: Request):
 
 @router.api_route("/updatePlaylist.view", methods=["GET", "POST", "HEAD"])
 async def update_playlist(request: Request):
-    """Supports renaming, appending songs (songIdToAdd), and removing by
-    index (songIndexToRemove) -- the operations DSub/Symfonium/etc.
-    actually send. Full reordering via repeated add/remove isn't
-    implemented since no mainstream client's playlist editor needs it
-    beyond these two operations."""
     user, err = await _authenticate(request)
     if not user:
         return err
@@ -733,8 +665,6 @@ async def update_playlist(request: Request):
         reverse=True,
     )
     if remove_indices:
-        # playlist_songs has a composite (playlist_id, song_id) primary key,
-        # not a surrogate id -- delete by that pair instead.
         ordered = db.execute(
             "SELECT song_id FROM playlist_songs WHERE playlist_id=? ORDER BY added_at", (pid,)
         ).fetchall()
@@ -753,11 +683,6 @@ async def update_playlist(request: Request):
 
 
 def _parse_lrc(lrc: str) -> list:
-    """[mm:ss.xx]lyric line -> [{"start": ms, "value": "lyric line"}, ...],
-    the structured shape OpenSubsonic's getLyricsBySongId expects. A line
-    can carry more than one timestamp tag (repeated choruses sharing one
-    line of text) -- each becomes its own entry, same as the source LRC
-    intends."""
     import re
     entries = []
     tag_re = re.compile(r"\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]")
@@ -777,13 +702,6 @@ def _parse_lrc(lrc: str) -> list:
 
 @router.api_route("/getLyricsBySongId.view", methods=["GET", "POST", "HEAD"])
 async def get_lyrics_by_song_id(request: Request):
-    """OpenSubsonic extension -- structured, timestamped lyrics per song
-    ID, as opposed to the older getLyrics.view's plain-text artist/title
-    lookup. Butler already fetches and caches real synced lyrics (see
-    /lyrics/{youtube_id} in main.py); this just exposes that same cache
-    in the shape Subsonic clients that support synced lyrics expect,
-    rather than requiring a second lyrics fetch through a Butler-specific
-    endpoint."""
     user, err = await _authenticate(request)
     if not user:
         return err
