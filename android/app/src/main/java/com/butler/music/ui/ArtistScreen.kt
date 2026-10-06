@@ -31,7 +31,9 @@ fun ArtistScreen(
     artistName: String,
     onBack: () -> Unit,
     onSongClick: (List<Song>, Song) -> Unit,
-    onToggleLike: (Song) -> Unit
+    onToggleLike: (Song) -> Unit,
+    onArtistClick: (String) -> Unit = {},
+    onAddToQueue: ((Song) -> Unit)? = null
 ) {
     val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as com.butler.music.ButlerApp
     val vm: ArtistViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = ArtistViewModel.Factory(app.api, app.downloads, artistName))
@@ -66,8 +68,10 @@ fun ArtistScreen(
                                     song = song,
                                     onClick = { onSongClick(page.songs, song) },
                                     onToggleLike = { onToggleLike(song) },
+                                    onArtistClick = { onArtistClick(song.artist) },
                                     downloadState = vm.downloadStateFor(song),
-                                    onToggleDownload = { vm.toggleDownload(song) }
+                                    onToggleDownload = { vm.toggleDownload(song) },
+                                    onAddToQueue = onAddToQueue
                                 )
                             }
                         }

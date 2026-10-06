@@ -161,14 +161,17 @@ GET  /artists/{artist_name}       -- bio + related info (MusicBrainz-backed)
 
 ### Playlists
 ```
-GET    /playlists                          -> {"playlists":[{id,name,owner_name,song_count,shared,created_at,thumbnail}]}
+GET    /playlists                          -> {"playlists":[{id,name,owner_name,song_count,shared,created_at,thumbnail,sort_order}]}
 POST   /playlists            {name}        -> the created playlist row
-GET    /playlists/{id}                     -> playlist detail + song list
+GET    /playlists/{id}                     -> playlist detail + song list (ordered by position)
 PATCH  /playlists/{id}       {name?, shared?}
 DELETE /playlists/{id}
-POST   /playlists/{id}/songs/{youtube_id}   -- song must already exist in your library (search/play it first) -- "Play the song first" 404 otherwise
+POST   /playlists/{id}/songs/{youtube_id}   -- song must already exist in your library (search/play it first) -- "Play the song first" 404 otherwise; added to the end of the playlist
 DELETE /playlists/{id}/songs/{youtube_id}
+PUT    /playlists/{id}/songs/reorder   {order:[youtube_id,...]}   -- reorder songs within a playlist (owner-only)
 ```
+
+Songs within a playlist are ordered by a `position` column (added via migration). The web UI shows a drag handle (⋮) on each song row in editable playlists — drag to reorder, and the new order is persisted via `PUT /playlists/{id}/songs/reorder`.
 
 ### Liked songs, history, discovery
 ```

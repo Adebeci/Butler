@@ -39,7 +39,7 @@ import com.butler.music.ui.theme.Surface as ButlerSurface
 import com.butler.music.ui.theme.SurfaceRaised
 
 @Composable
-fun HomeTab(vm: MainViewModel, onSongClick: (List<Song>, Song) -> Unit, onToggleLike: (Song) -> Unit, onArtistClick: (String) -> Unit = {}) {
+fun HomeTab(vm: MainViewModel, onSongClick: (List<Song>, Song) -> Unit, onToggleLike: (Song) -> Unit, onArtistClick: (String) -> Unit = {}, onAddToQueue: ((Song) -> Unit)? = null) {
     val dailyMix by vm.dailyMix.collectAsStateWithLifecycle()
     val recentlyPlayed by vm.recentlyPlayed.collectAsStateWithLifecycle()
     val recommendations by vm.recommendations.collectAsStateWithLifecycle()
@@ -93,7 +93,8 @@ fun HomeTab(vm: MainViewModel, onSongClick: (List<Song>, Song) -> Unit, onToggle
                         onToggleLike = { onToggleLike(song) },
                         onArtistClick = { onArtistClick(song.artist) },
                         downloadState = vm.downloadStateFor(song),
-                        onToggleDownload = { vm.toggleDownload(song) }
+                        onToggleDownload = { vm.toggleDownload(song) },
+                        onAddToQueue = onAddToQueue
                     )
                 }
             }
@@ -179,7 +180,8 @@ fun LibraryTab(
     navController: NavHostController,
     onSongClick: (List<Song>, Song) -> Unit,
     onToggleLike: (Song) -> Unit,
-    onArtistClick: (String) -> Unit = {}
+    onArtistClick: (String) -> Unit = {},
+    onAddToQueue: ((Song) -> Unit)? = null
 ) {
     val library by vm.library.collectAsStateWithLifecycle()
     val liked by vm.liked.collectAsStateWithLifecycle()
@@ -255,7 +257,8 @@ fun LibraryTab(
                                 onToggleLike = { onToggleLike(song) },
                                 onArtistClick = { onArtistClick(song.artist) },
                                 downloadState = vm.downloadStateFor(song),
-                                onToggleDownload = { vm.toggleDownload(song) }
+                                onToggleDownload = { vm.toggleDownload(song) },
+                                onAddToQueue = onAddToQueue
                             )
                         }
                     }
@@ -269,7 +272,7 @@ fun LibraryTab(
                         .padding(16.dp)
                 ) {
                     Text(
-                        "Based on Butler",
+                        "Based on Butler by DGuckert",
                         style = MaterialTheme.typography.bodySmall,
                         color = Stone
                     )
@@ -362,7 +365,7 @@ private fun DownloadsRow(count: Int, onClick: () -> Unit) {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DownloadsScreen(vm: MainViewModel, onBack: () -> Unit, onSongClick: (List<Song>, Song) -> Unit, onToggleLike: (Song) -> Unit, onArtistClick: (String) -> Unit = {}) {
+fun DownloadsScreen(vm: MainViewModel, onBack: () -> Unit, onSongClick: (List<Song>, Song) -> Unit, onToggleLike: (Song) -> Unit, onArtistClick: (String) -> Unit = {}, onAddToQueue: ((Song) -> Unit)? = null) {
     val downloaded by vm.downloadedSongs.collectAsStateWithLifecycle()
     Scaffold(
         topBar = {
@@ -389,7 +392,8 @@ fun DownloadsScreen(vm: MainViewModel, onBack: () -> Unit, onSongClick: (List<So
                             onToggleLike = { onToggleLike(song) },
                             onArtistClick = { onArtistClick(song.artist) },
                             downloadState = vm.downloadStateFor(song),
-                            onToggleDownload = { vm.toggleDownload(song) }
+                            onToggleDownload = { vm.toggleDownload(song) },
+                            onAddToQueue = onAddToQueue
                         )
                     }
                 }
@@ -400,7 +404,7 @@ fun DownloadsScreen(vm: MainViewModel, onBack: () -> Unit, onSongClick: (List<So
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchTab(vm: MainViewModel, onSongClick: (List<Song>, Song) -> Unit, onToggleLike: (Song) -> Unit, onArtistClick: (String) -> Unit = {}) {
+fun SearchTab(vm: MainViewModel, onSongClick: (List<Song>, Song) -> Unit, onToggleLike: (Song) -> Unit, onArtistClick: (String) -> Unit = {}, onAddToQueue: ((Song) -> Unit)? = null) {
     var query by remember { mutableStateOf("") }
     val results by vm.searchResults.collectAsStateWithLifecycle()
 
@@ -439,7 +443,8 @@ fun SearchTab(vm: MainViewModel, onSongClick: (List<Song>, Song) -> Unit, onTogg
                             onToggleLike = { onToggleLike(song) },
                             onArtistClick = { onArtistClick(song.artist) },
                             downloadState = vm.downloadStateFor(song),
-                            onToggleDownload = { vm.toggleDownload(song) }
+                            onToggleDownload = { vm.toggleDownload(song) },
+                            onAddToQueue = onAddToQueue
                         )
                     }
                 }

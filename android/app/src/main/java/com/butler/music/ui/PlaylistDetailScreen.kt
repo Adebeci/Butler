@@ -10,12 +10,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.butler.music.ButlerApp
 import com.butler.music.network.Song
 import com.butler.music.ui.theme.Ink
 import com.butler.music.ui.theme.Stone
+import com.butler.music.ui.theme.SurfaceRaised
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -24,7 +26,8 @@ fun PlaylistDetailScreen(
     onBack: () -> Unit,
     onSongClick: (List<Song>, Song) -> Unit,
     onToggleLike: (Song) -> Unit,
-    onArtistClick: (String) -> Unit = {}
+    onArtistClick: (String) -> Unit = {},
+    onAddToQueue: ((Song) -> Unit)? = null
 ) {
     val app = LocalContext.current.applicationContext as ButlerApp
     val vm: PlaylistDetailViewModel = viewModel(
@@ -59,10 +62,30 @@ fun PlaylistDetailScreen(
                             onArtistClick = { onArtistClick(song.artist) },
                             downloadState = vm.downloadStateFor(song),
                             onToggleDownload = { vm.toggleDownload(song) },
+                            onAddToQueue = onAddToQueue,
                             trailing = {
                                 if (current.playlist?.canEdit == true) {
-                                    IconButton(onClick = { vm.removeSong(song) }) {
-                                        Icon(Icons.Filled.Delete, contentDescription = "Remove", tint = Stone)
+                                    var showMenu by remember { mutableStateOf(false) }
+                                    Row {
+                                        IconButton(onClick = { showMenu = true }) {
+                                            Icon(Icons.Filled.MoreVert, contentDescription = "More", tint = Stone)
+                                        }
+                                        DropdownMenu(
+                                            expanded = showMenu,
+                                            onDismissRequest = { showMenu = false },
+                                            containerColor = SurfaceRaised
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text("Add to queue", color = androidx.compose.ui.graphics.Color.White) },
+                                                onClick = {
+                                                    onAddToQueue?.invoke(song)
+                                                    showMenu = false
+                                                }
+                                            )
+                                        }
+                                        IconButton(onClick = { vm.removeSong(song) }) {
+                                            Icon(Icons.Filled.Delete, contentDescription = "Remove", tint = Stone)
+                                        }
                                     }
                                 }
                             }

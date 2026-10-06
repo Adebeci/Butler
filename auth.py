@@ -1,4 +1,5 @@
 import hashlib
+import secrets
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -49,6 +50,11 @@ def get_current_user(request: Request, token: str = Depends(oauth2_scheme)):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     db = get_db()
     user = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    if user:
+        # Refresh last_seen on every authenticated request so the admin
+        # panel can show "last active" timestamps.
+        db.execute("UPDATE users SET last_seen = CURRENT_TIMESTAMP WHERE id = ?", (user["id"],))
+        db.commit()
     db.close()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
@@ -62,3 +68,26 @@ def require_admin(user: dict = Depends(get_current_user)) -> dict:
     if user["id"] != 1:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
     return user
+
+
+# ── Temporary password (admin generates, user logs in then changes) ────
+# Admin workflow: admin clicks "Reset Password" on a user row, butler
+# generates a 4-digit PIN and overwrites the user's password_hash. The admin
+# reads the PIN to the user over a secondary channel (chat, phone call,
+# etc.). User then logs in with the PIN like a normal password and hits
+# /auth/change-password to set a real one. This reuses the existing login
+# + change-password flow -- no new public endpoint needed.
+
+def generate_temp_password(user_id: int) -> str:
+    """Sets a new 4-digit temporary PIN for the user. Returns the
+    plaintext PIN -- only shown once in the admin UI and copied to clipboard.
+    After use, the user changes it via /auth/change-password."""
+    pin = f"{secrets.randbelow(9000) + 1000}"  # 4-digit: 1000-9999
+    db = get_db()
+    db.execute(
+        "UPDATE users SET password_hash=?, password_md5=? WHERE id=?",
+        (hash_password(pin), hash_password_md5(pin), user_id),
+    )
+    db.commit()
+    db.close()
+    return pin

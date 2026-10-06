@@ -14,9 +14,13 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,6 +50,7 @@ fun SongRow(
     onArtistClick: (() -> Unit)? = null,
     downloadState: com.butler.music.data.DownloadState? = null,
     onToggleDownload: (() -> Unit)? = null,
+    onAddToQueue: ((Song) -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null,
     showDivider: Boolean = false
 ) {
@@ -110,6 +115,30 @@ fun SongRow(
                         contentDescription = "Like",
                         tint = if (song.liked) Oxblood else Stone,
                         modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+            if (onAddToQueue != null) {
+                var showMenu by remember { mutableStateOf(false) }
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(
+                        Icons.Filled.MoreVert,
+                        contentDescription = "More",
+                        tint = Stone,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                    containerColor = SurfaceRaised
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Add to queue", color = androidx.compose.ui.graphics.Color.White) },
+                        onClick = {
+                            onAddToQueue(song)
+                            showMenu = false
+                        }
                     )
                 }
             }

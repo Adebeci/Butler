@@ -1,5 +1,8 @@
 package com.butler.music.ui
 
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.*
@@ -7,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material3.*
@@ -41,9 +45,12 @@ private val tabs = listOf(Tab.Home, Tab.Search, Tab.Library)
 @Composable
 fun MainScreen(player: PlayerController, onLogout: () -> Unit) {
     val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as com.butler.music.ButlerApp
+    val activity = (LocalContext.current as? ComponentActivity)
     val vm: MainViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = MainViewModel.Factory(app.api, app.downloads))
     val navController = rememberNavController()
     var showNowPlaying by remember { mutableStateOf(false) }
+    var showExitDialog by remember { mutableStateOf(false) }
+    var showAttributionDialog by remember { mutableStateOf(false) }
     val playerState by player.state.collectAsStateWithLifecycle()
 
     fun playFrom(songs: List<Song>, song: Song) {
@@ -53,6 +60,10 @@ fun MainScreen(player: PlayerController, onLogout: () -> Unit) {
 
     fun openArtist(name: String) {
         navController.navigate("artist/${android.net.Uri.encode(name)}")
+    }
+
+    BackHandler(enabled = playerState.isPlaying) {
+        showExitDialog = true
     }
 
     Scaffold(
@@ -66,6 +77,9 @@ fun MainScreen(player: PlayerController, onLogout: () -> Unit) {
                     )
                 },
                 actions = {
+                    IconButton(onClick = { showAttributionDialog = true }) {
+                        Icon(Icons.Filled.Info, contentDescription = "Attribution", tint = Stone)
+                    }
                     IconButton(onClick = onLogout) {
                         Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Log out", tint = Stone)
                     }
@@ -105,10 +119,10 @@ fun MainScreen(player: PlayerController, onLogout: () -> Unit) {
             modifier = Modifier.padding(padding)
         ) {
             composable(Tab.Home.route) {
-                HomeTab(vm, onSongClick = { songs, song -> playFrom(songs, song) }, onToggleLike = vm::toggleLike, onArtistClick = ::openArtist)
+                HomeTab(vm, onSongClick = { songs, song -> playFrom(songs, song) }, onToggleLike = vm::toggleLike, onArtistClick = ::openArtist, onAddToQueue = { song -> player.addToQueue(song) })
             }
             composable(Tab.Search.route) {
-                SearchTab(vm, onSongClick = { songs, song -> playFrom(songs, song) }, onToggleLike = vm::toggleLike, onArtistClick = ::openArtist)
+                SearchTab(vm, onSongClick = { songs, song -> playFrom(songs, song) }, onToggleLike = vm::toggleLike, onArtistClick = ::openArtist, onAddToQueue = { song -> player.addToQueue(song) })
             }
             composable(Tab.Library.route) {
                 LibraryTab(
@@ -116,7 +130,8 @@ fun MainScreen(player: PlayerController, onLogout: () -> Unit) {
                     navController,
                     onSongClick = { songs, song -> playFrom(songs, song) },
                     onToggleLike = vm::toggleLike,
-                    onArtistClick = ::openArtist
+                    onArtistClick = ::openArtist,
+                    onAddToQueue = { song -> player.addToQueue(song) }
                 )
             }
             composable("liked") {
@@ -125,7 +140,8 @@ fun MainScreen(player: PlayerController, onLogout: () -> Unit) {
                     onBack = { navController.popBackStack() },
                     onSongClick = { songs, song -> playFrom(songs, song) },
                     onToggleLike = vm::toggleLike,
-                    onArtistClick = ::openArtist
+                    onArtistClick = ::openArtist,
+                    onAddToQueue = { song -> player.addToQueue(song) }
                 )
             }
             composable("downloads") {
@@ -134,7 +150,8 @@ fun MainScreen(player: PlayerController, onLogout: () -> Unit) {
                     onBack = { navController.popBackStack() },
                     onSongClick = { songs, song -> playFrom(songs, song) },
                     onToggleLike = vm::toggleLike,
-                    onArtistClick = ::openArtist
+                    onArtistClick = ::openArtist,
+                    onAddToQueue = { song -> player.addToQueue(song) }
                 )
             }
             composable(
@@ -146,7 +163,9 @@ fun MainScreen(player: PlayerController, onLogout: () -> Unit) {
                     artistName = name,
                     onBack = { navController.popBackStack() },
                     onSongClick = { songs, song -> playFrom(songs, song) },
-                    onToggleLike = vm::toggleLike
+                    onToggleLike = vm::toggleLike,
+                    onArtistClick = ::openArtist,
+                    onAddToQueue = { song -> player.addToQueue(song) }
                 )
             }
             composable(
@@ -159,7 +178,8 @@ fun MainScreen(player: PlayerController, onLogout: () -> Unit) {
                     onBack = { navController.popBackStack() },
                     onSongClick = { songs, song -> playFrom(songs, song) },
                     onToggleLike = vm::toggleLike,
-                    onArtistClick = ::openArtist
+                    onArtistClick = ::openArtist,
+                    onAddToQueue = { song -> player.addToQueue(song) }
                 )
             }
         }
@@ -167,6 +187,43 @@ fun MainScreen(player: PlayerController, onLogout: () -> Unit) {
 
     if (showNowPlaying) {
         NowPlayingSheet(player = player, onToggleLike = vm::toggleLike, onDismiss = { showNowPlaying = false })
+    }
+
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = { Text("Continue?", style = MaterialTheme.typography.titleMedium) },
+            text = { Text("This will stop music playback. Continue?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showExitDialog = false
+                    player.release()
+                    activity?.finish()
+                }) { Text("Exit", color = Brass) }
+            },
+            dismissButton = { TextButton(onClick = { showExitDialog = false }) { Text("Cancel") } },
+            containerColor = Surface
+        )
+    }
+
+    if (showAttributionDialog) {
+        AlertDialog(
+            onDismissRequest = { showAttributionDialog = false },
+            title = { Text("Butler", style = MaterialTheme.typography.titleMedium) },
+            text = {
+                Column {
+                    Text("Based on Butler by DGuckert")
+                    Text(
+                        "github.com/DGuckert/Butler",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Stone.copy(alpha = 0.5f)
+                    )
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { showAttributionDialog = false }) { Text("OK") } },
+            containerColor = Surface
+        )
     }
 }
 

@@ -23,7 +23,8 @@ fun LikedSongsScreen(
     onBack: () -> Unit,
     onSongClick: (List<Song>, Song) -> Unit,
     onToggleLike: (Song) -> Unit,
-    onArtistClick: (String) -> Unit = {}
+    onArtistClick: (String) -> Unit = {},
+    onAddToQueue: ((Song) -> Unit)? = null
 ) {
     val liked by vm.liked.collectAsStateWithLifecycle()
 
@@ -55,7 +56,8 @@ fun LikedSongsScreen(
                                 onToggleLike = { onToggleLike(song) },
                                 onArtistClick = { onArtistClick(song.artist) },
                                 downloadState = vm.downloadStateFor(song),
-                                onToggleDownload = { vm.toggleDownload(song) }
+                                onToggleDownload = { vm.toggleDownload(song) },
+                                onAddToQueue = onAddToQueue
                             )
                         }
                     }

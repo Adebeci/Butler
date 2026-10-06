@@ -656,8 +656,8 @@ def get_playlist(playlist_id: int, user=Depends(get_current_user)):
     """, (playlist_id, user["id"])).fetchone()
     if not p: db.close(); raise HTTPException(404, "Playlist not found")
     songs = db.execute("""
-        SELECT s.*, ps.added_at as added_to_playlist FROM playlist_songs ps
-        JOIN songs s ON s.id=ps.song_id WHERE ps.playlist_id=? ORDER BY ps.added_at
+        SELECT s.*, ps.added_at as added_to_playlist, ps.position FROM playlist_songs ps
+        JOIN songs s ON s.id=ps.song_id WHERE ps.playlist_id=? ORDER BY ps.position
     """, (playlist_id,)).fetchall()
     songs = [dict(s) for s in songs]
     p = dict(p)
@@ -699,6 +699,30 @@ def reorder_playlists(req: dict, user=Depends(get_current_user)):
     db.commit(); db.close()
     return {"reordered": True}
 
+@app.put("/playlists/{playlist_id}/songs/reorder")
+def reorder_playlist_songs(playlist_id: int, req: dict, user=Depends(get_current_user)):
+    """Reorder songs within a playlist. Body: {"order": [youtube_id, ...]}
+    Only the playlist owner can reorder."""
+    order = req.get("order", [])
+    if not isinstance(order, list):
+        raise HTTPException(400, "Invalid order")
+    db = get_db()
+    p = db.execute("SELECT id FROM playlists WHERE id=? AND user_id=?", (playlist_id, user["id"])).fetchone()
+    if not p: db.close(); raise HTTPException(404, "Not yours")
+    # Resolve youtube_ids to song_ids in the given order
+    if not order:
+        db.commit(); db.close()
+        return {"reordered": True}
+    ids = ",".join("?" * len(order))
+    rows = db.execute(f"SELECT id, youtube_id FROM songs WHERE youtube_id IN ({ids})", order).fetchall()
+    yid_to_sid = {r["youtube_id"]: r["id"] for r in rows}
+    for i, yid in enumerate(order):
+        if yid in yid_to_sid:
+            db.execute("UPDATE playlist_songs SET position=? WHERE playlist_id=? AND song_id=?",
+                       (i, playlist_id, yid_to_sid[yid]))
+    db.commit(); db.close()
+    return {"reordered": True}
+
 @app.post("/playlists/{playlist_id}/songs/{youtube_id}")
 def add_to_playlist(playlist_id: int, youtube_id: str, user=Depends(get_current_user)):
     db = get_db()
@@ -706,7 +730,9 @@ def add_to_playlist(playlist_id: int, youtube_id: str, user=Depends(get_current_
     if not p: db.close(); raise HTTPException(404, "Not found")
     song = db.execute("SELECT id FROM songs WHERE youtube_id=?", (youtube_id,)).fetchone()
     if not song: db.close(); raise HTTPException(404, "Play the song first")
-    db.execute("INSERT OR IGNORE INTO playlist_songs (playlist_id,song_id) VALUES (?,?)", (playlist_id, song["id"]))
+    max_pos = db.execute("SELECT MAX(position) FROM playlist_songs WHERE playlist_id=?", (playlist_id,)).fetchone()[0]
+    new_pos = (max_pos or 0) + 1
+    db.execute("INSERT OR IGNORE INTO playlist_songs (playlist_id,song_id,position) VALUES (?,?,?)", (playlist_id, song["id"], new_pos))
     db.commit(); db.close()
     return {"added": True}
 
@@ -717,7 +743,12 @@ def remove_from_playlist(playlist_id: int, youtube_id: str, user=Depends(get_cur
     if not p: db.close(); raise HTTPException(404, "Not yours")
     song = db.execute("SELECT id FROM songs WHERE youtube_id=?", (youtube_id,)).fetchone()
     if song:
+        pos_row = db.execute("SELECT position FROM playlist_songs WHERE playlist_id=? AND song_id=?", (playlist_id, song["id"])).fetchone()
+        old_pos = pos_row["position"] if pos_row else None
         db.execute("DELETE FROM playlist_songs WHERE playlist_id=? AND song_id=?", (playlist_id, song["id"]))
+        # Re-number positions after removal to keep them contiguous
+        if old_pos is not None:
+            db.execute("UPDATE playlist_songs SET position = position - 1 WHERE playlist_id=? AND position > ?", (playlist_id, old_pos))
         db.commit()
     db.close()
     return {"removed": True}
@@ -738,9 +769,36 @@ def delete_playlist(playlist_id: int, user=Depends(get_current_user)):
 def list_users(user=Depends(get_current_user)):
     if user["id"] != 1: raise HTTPException(403, "Admin only")
     db = get_db()
-    users = db.execute("SELECT id,username,created_at FROM users ORDER BY id").fetchall()
+    users = db.execute("SELECT id,username,created_at,last_seen FROM users ORDER BY id").fetchall()
     db.close()
     return {"users": [dict(u) for u in users]}
+
+
+# ── Temporary password (admin generates a 4-digit PIN, user logs in then changes) ────
+@app.post("/admin/users/{user_id}/temp-password")
+def create_temp_password(user_id: int, user=Depends(get_current_user)):
+    """Admin generates a 4-digit PIN for a specific user. The user logs in
+    with the PIN like a normal password, then changes to a real one via
+    /auth/change-password. Only visible to admin."""
+    if user["id"] != 1: raise HTTPException(403, "Admin only")
+    db = get_db()
+    target = db.execute("SELECT id, username FROM users WHERE id=?", (user_id,)).fetchone()
+    db.close()
+    if not target:
+        raise HTTPException(404, "User not found")
+    import auth
+    pin = auth.generate_temp_password(user_id)
+    return {"temp_password": pin, "username": target["username"]}
+
+@app.post("/admin/users/reset-lastseen")
+def reset_last_seen(user=Depends(get_current_user)):
+    """Reset last_seen for all users — starts the activity tracking over."""
+    if user["id"] != 1: raise HTTPException(403, "Admin only")
+    db = get_db()
+    db.execute("UPDATE users SET last_seen = NULL")
+    db.commit()
+    db.close()
+    return {"reset": True}
 
 @app.delete("/admin/users/{user_id}")
 def delete_user(user_id: int, user=Depends(get_current_user)):

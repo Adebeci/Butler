@@ -151,10 +151,10 @@ def ensure_daily_playlist(db, user_id: int) -> int:
 
 def rewrite_playlist(db, playlist_id: int, song_ids: list[int]) -> None:
     db.execute("DELETE FROM playlist_songs WHERE playlist_id=?", (playlist_id,))
-    for sid in song_ids:
+    for pos, sid in enumerate(song_ids):
         db.execute(
-            "INSERT OR IGNORE INTO playlist_songs (playlist_id, song_id) VALUES (?,?)",
-            (playlist_id, sid),
+            "INSERT OR IGNORE INTO playlist_songs (playlist_id, song_id, position) VALUES (?,?,?)",
+            (playlist_id, sid, pos),
         )
     db.commit()
 

@@ -2,6 +2,11 @@
 
 All notable changes to Butler are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Added
+- **Song reordering within playlists** -- songs in a playlist can now be manually reordered. The `playlist_songs` table got a `position` column (seeded from `added_at` for existing data), and a new `PUT /playlists/{id}/songs/reorder` endpoint accepts `{"order": [youtube_id, ...]}`. The web UI shows a drag handle on each song row in editable playlists. The Subsonic `updatePlaylist.view`/`createPlaylist.view` handlers also assign and respect `position` so the same order is visible from Subsonic-compatible clients.
+
 ## [1.1.0] - 2026-08-03
 
 ### Added

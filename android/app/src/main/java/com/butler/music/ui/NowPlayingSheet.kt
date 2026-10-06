@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.*
@@ -37,6 +38,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.butler.music.network.Song
 import com.butler.music.playback.PlayerController
 import kotlinx.coroutines.launch
 import com.butler.music.ui.theme.Brass
@@ -180,46 +182,13 @@ fun NowPlayingSheet(player: PlayerController, onToggleLike: (com.butler.music.ne
                         onSeek = { player.seekTo(it) }
                     )
                 } else {
-                    // Always show UP NEXT section — even if there's only one
-                    // song in the queue, so there's always a visible queue list.
-                    val upNext = state.queue.drop(state.currentIndex + 1).take(5)
-                    Spacer(Modifier.height(28.dp))
-                    Text(
-                        "UP NEXT",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Stone,
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
+                    QueueSection(
+                        queue = state.queue,
+                        currentIndex = state.currentIndex,
+                        onSongClick = { index -> player.moveToQueueIndex(index) },
+                        onClearQueue = { player.clearQueue() },
+                        onRemoveSong = { index -> player.removeFromQueue(index) }
                     )
-                    if (upNext.isEmpty()) {
-                        Text(
-                            "No more songs in queue",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Stone.copy(alpha = 0.5f)
-                        )
-                    } else {
-                        Column(Modifier.fillMaxWidth()) {
-                            upNext.forEach { upNextSong ->
-                                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-                                    Text(
-                                        upNextSong.title,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f).basicMarquee()
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(
-                                        upNextSong.artist,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Stone,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.basicMarquee()
-                                    )
-                                }
-                            }
-                        }
-                    }
                 }
             }
         }
@@ -325,3 +294,124 @@ private fun LyricsView(
         else -> Text("No matching lyrics found for this recording.", color = Stone, modifier = Modifier.padding(vertical = 24.dp))
     }
 }
+
+/**
+ * Full queue list shown in the NowPlayingSheet, mirroring the web's queue panel.
+ * Shows every song including the current one (with a playing indicator),
+ * "Artist - Title" marquee format, a Clear button, and per-item remove buttons.
+ */
+@Composable
+private fun QueueSection(
+    queue: List<Song>,
+    currentIndex: Int,
+    onSongClick: (Int) -> Unit,
+    onClearQueue: () -> Unit,
+    onRemoveSong: (Int) -> Unit
+) {
+    Spacer(Modifier.height(28.dp))
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(bottom = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            "UP NEXT",
+            style = MaterialTheme.typography.labelLarge,
+            color = Stone
+        )
+        if (queue.isNotEmpty() && queue.size > 1) {
+            TextButton(onClick = onClearQueue) {
+                Text("Clear", color = Brass, style = MaterialTheme.typography.labelSmall)
+            }
+        }
+    }
+    if (queue.isEmpty()) {
+        Text(
+            "No more songs in queue",
+            style = MaterialTheme.typography.bodySmall,
+            color = Stone.copy(alpha = 0.5f)
+        )
+    } else {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(220.dp),
+            userScrollEnabled = true
+        ) {
+            itemsIndexed(queue, key = { _, song -> song.youtubeId }) { index, song ->
+                val isCurrent = index == currentIndex
+                val fullTitle = "${song.artist} - ${song.title}"
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { onSongClick(index) }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (isCurrent) {
+                        Box(
+                            Modifier
+                                .size(20.dp)
+                                .clip(CircleShape)
+                                .background(Brass),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Filled.PlayArrow,
+                                contentDescription = "Playing",
+                                tint = Ink,
+                                modifier = Modifier.size(12.dp)
+                            )
+                        }
+                        Spacer(Modifier.width(8.dp))
+                    } else {
+                        Text(
+                            (index + 1).toString(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Stone.copy(alpha = 0.5f),
+                            modifier = Modifier.width(28.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    Text(
+                        fullTitle,
+                        style = if (isCurrent) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodySmall,
+                        color = if (isCurrent) androidx.compose.ui.graphics.Color.White else Stone,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f).basicMarquee()
+                    )
+                    if (queue.size > 1) {
+                        IconButton(onClick = { onRemoveSong(index) }) {
+                            Icon(
+                                Icons.Filled.Close,
+                                contentDescription = "Remove",
+                                tint = Stone,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+                if (index < queue.lastIndex) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = 32.dp),
+                        thickness = 0.6.dp,
+                        color = Stone.copy(alpha = 0.12f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** "3:45" style formatting shared by song rows and the now playing screen. */
+fun formatDuration(totalSeconds: Int): String {
+    val s = totalSeconds.coerceAtLeast(0)
+    val minutes = s / 60
+    val seconds = s % 60
+    return "%d:%02d".format(minutes, seconds)
+}
+
+fun formatDurationMs(ms: Long): String = formatDuration((ms / 1000).toInt())

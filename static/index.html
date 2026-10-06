@@ -15,8 +15,8 @@
   --font-display:-apple-system,'SF Pro Display','SF Pro Text','Helvetica Neue',Arial,sans-serif;
   --sidebar-w:232px;--player-h:90px;--radius:4px;
 }
-body{background:var(--bg);color:var(--text);font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;height:100vh;height:100dvh;overflow:hidden;user-select:none;font-size:14px}
-input,textarea,select{user-select:text;-webkit-user-select:text}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;height:100vh;height:100dvh;font-size:14px;overflow-y:visible}
+input,textarea,select{user-select:text;-webkit-user-select:text;pointer-events:auto}
 ::-webkit-scrollbar{width:8px;height:8px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--bg5);border-radius:4px}
@@ -50,7 +50,7 @@ input,textarea,select{user-select:text;-webkit-user-select:text}
 #body{display:flex;flex:1;overflow:hidden;gap:2px;padding:2px}
 
 /* ── Sidebar ── */
-#sidebar{position:relative;width:var(--sidebar-w);background:var(--bg2);border-radius:8px;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden;transition:width .2s}#sidebar-resize{position:absolute;top:0;right:-3px;width:6px;height:100%;cursor:col-resize;z-index:2;border-radius:3px;transition:background .2s}#sidebar-resize:hover{background:rgba(255,255,255,.08)}#sidebar:hover #sidebar-resize{background:rgba(255,255,255,.05)}
+#sidebar{position:relative;width:var(--sidebar-w);background:var(--bg2);border-radius:8px;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden;transition:width .2s}#sidebar-resize{position:absolute;top:0;right:-3px;width:6px;height:100%;cursor:col-resize;z-index:2;border-radius:3px;transition:background .2s}#sidebar-resize:hover{background:rgba(255,255,255,.08)}#sidebar:hover #sidebar-resize{background:rgba(255,255,255,.05)}#sidebar-nav{flex:1;overflow-y:auto;padding-right:2px}#sidebar-nav::-webkit-scrollbar{width:6px}#sidebar-nav::-webkit-scrollbar-thumb{background:var(--bg5);border-radius:3px}#sidebar-nav::-webkit-scrollbar-track{background:transparent}
 .sidebar-logo{padding:20px 16px 8px;font-size:1.1rem;font-weight:800;letter-spacing:-.5px;flex-shrink:0;font-family:var(--font-display);display:flex;align-items:center;gap:10px;position:relative}
 .sidebar-logo .butler-mark{width:28px;height:28px;flex-shrink:0}
 .sidebar-logo span{color:var(--green)}
@@ -150,8 +150,18 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
 
 /* ── Table ── */
 .song-table{width:100%}
-.tbl-head{display:grid;grid-template-columns:40px 1fr 180px 60px 60px;padding:4px 16px;gap:8px;border-bottom:1px solid var(--bg3);margin-bottom:4px;color:var(--muted);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;align-items:center}
-.song-row{display:grid;grid-template-columns:40px 1fr 180px 60px 60px;padding:5px 16px;gap:8px;border-radius:var(--radius);cursor:pointer;align-items:center;transition:background .1s;position:relative}
+.s-drag{cursor:grab;font-size:15px;font-weight:700;color:var(--muted);padding:4px 2px;opacity:.4;flex-shrink:0;user-select:none;display:inline-block;line-height:1}
+.s-drag.hide{cursor:not-allowed}
+.s-row-dragging{opacity:.4}
+.s-drop-target{opacity:.7}
+/* Column resize: use CSS variables for flexible column widths, default to the original fixed values */
+.tbl-head{display:grid;grid-template-columns:var(--col-num,40px) var(--col-title,1fr) var(--col-artist,180px) var(--col-dur,60px) var(--col-actions,70px);padding:4px 16px;gap:8px;border-bottom:1px solid var(--bg3);margin-bottom:4px;color:var(--muted);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;align-items:center}
+.song-row{display:grid;grid-template-columns:var(--col-num,40px) var(--col-title,1fr) var(--col-artist,180px) var(--col-dur,60px) var(--col-actions,70px);padding:5px 16px;gap:8px;border-radius:var(--radius);cursor:pointer;align-items:center;transition:background .1s;position:relative}
+/* Resizable column header grippies */
+.col-resizer{position:absolute;right:0;top:0;bottom:0;width:12px;cursor:col-resize;z-index:2;user-select:none;display:flex;align-items:center;justify-content:center;opacity:.5;transition:opacity .15s}
+.col-resizer:hover{opacity:1}
+.col-resizer::before{content:'';display:inline-block;width:2px;height:16px;background:var(--muted);border-radius:1px;transition:background .15s}
+.col-resizer:hover::before{background:var(--green)}
 .song-row:hover{background:var(--bg3)}
 .song-row.active{background:var(--bg3)}
 .song-row.active .s-title{color:var(--green)}
@@ -171,6 +181,7 @@ hr.sdiv{border:none;border-top:1px solid #2a2a2a;margin:6px 0;flex-shrink:0}
 .s-actions{display:flex;align-items:center;gap:2px;justify-content:flex-end}
 .row-btn{background:none;border:none;color:transparent;cursor:pointer;font-size:15px;padding:4px;border-radius:50%;transition:color .1s;display:flex;align-items:center;justify-content:center;width:28px;height:28px}
 .song-row:hover .row-btn{color:var(--muted)}
+.song-row:hover .s-drag{opacity:.6}
 .row-btn:hover{color:var(--text)!important}
 .row-btn.liked{color:var(--green)!important}
 .row-btn-more{display:none}
@@ -270,15 +281,276 @@ body.player-idle #player{display:none}
 #dl-progress-bar{height:100%;background:var(--green);width:0%;transition:width .3s ease}
 
 /* ── Modal ── */
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center}
-.modal{background:var(--bg3);border-radius:8px;padding:22px;width:min(320px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow-y:auto;box-shadow:0 16px 48px rgba(0,0,0,.6);position:relative;z-index:201}
-.modal h3{margin-bottom:14px;font-size:1rem}
-.modal input,.modal select{width:100%;padding:10px 12px;border-radius:var(--radius);border:1px solid var(--bg4);background:var(--bg2);color:var(--text);font-size:14px;outline:none;margin-bottom:10px}
-.modal input:focus{border-color:var(--text)}
-.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
-.modal-btns .btn-green{width:auto;padding:9px 20px}
-.modal-check{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px;cursor:pointer}
-.modal-check input{width:auto;margin:0;cursor:pointer}
+/* ── Elegant Modal with 3D Float ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:none;align-items:center;justify-content:center;user-select:text!important;pointer-events:auto!important}
+.modal-bg.open{display:flex}
+.modal-container{position:relative;width:100%;max-width:420px;pointer-events:auto!important}
+.modal{
+  background:linear-gradient(145deg,var(--bg3),var(--bg2));
+  border-radius:16px;
+  padding:28px;
+  width:min(420px,calc(100vw - 32px));
+  max-height:calc(100vh - 48px);
+  overflow-y:auto;
+  box-shadow:0 32px 64px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05);
+  position:relative;
+  z-index:10000;
+  user-select:text!important;
+  border:1px solid rgba(255,255,255,.1);
+  pointer-events:auto!important;
+  opacity:0;
+  transform:translateY(20px) scale(0.95);
+  transition:all .4s cubic-bezier(.25,.8,.25,1);
+}
+.modal-bg.open .modal{opacity:1;transform:translateY(0) scale(1)}
+@keyframes modalFloat{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-4px)}
+}
+.modal::before{
+  content:'';
+  position:absolute;
+  top:0;
+  left:0;
+  right:0;
+  height:4px;
+  background:var(--green);
+  border-radius:16px 16px 0 0;
+  opacity:.8;
+}
+.modal h3{
+  margin-bottom:18px;
+  font-size:1.2rem;
+  font-weight:700;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.modal h3 svg{width:22px;height:22px;color:var(--green)}
+.modal input,.modal select{
+  width:100%;
+  padding:12px 16px;
+  border-radius:12px;
+  border:1px solid var(--bg4);
+  background:var(--bg2);
+  color:var(--text);
+  font-size:14px;
+  outline:none;
+  margin-bottom:12px;
+  transition:all .2s;
+  user-select:text;
+  -webkit-user-select:text;
+  pointer-events:auto;
+}
+.modal input:focus{
+  border-color:var(--green);
+  box-shadow:0 0 0 2px rgba(0,122,255,.2);
+  background:var(--bg3);
+}
+.modal-btns{
+  display:flex;
+  gap:10px;
+  justify-content:flex-end;
+  margin-top:8px;
+}
+.modal-btns .btn-green{
+  width:auto;
+  padding:10px 24px;
+  border-radius:24px;
+  font-weight:700;
+}
+.modal-btns .btn-outline{
+  width:auto;
+  padding:10px 24px;
+  border-radius:24px;
+  font-weight:700;
+}
+.modal-check{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:14px;
+  font-size:13px;
+  cursor:pointer;
+}
+.modal-check input{
+  width:auto;
+  margin:0;
+  cursor:pointer;
+  transform:scale(1.2);
+}
+.modal-close{
+  position:absolute;
+  top:12px;
+  right:12px;
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  background:rgba(255,255,255,.1);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  color:var(--muted);
+  transition:all .2s;
+  z-index:10;
+}
+.modal-close:hover{
+  background:rgba(255,255,255,.2);
+  color:var(--text);
+  transform:scale(1.1);
+}
+.modal-close svg{width:14px;height:14px}
+
+/* ── New Playlist Modal ── */
+.new-pl-modal-bg{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.6);
+  z-index:10000;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
+.new-pl-modal-bg.open{
+  display:flex;
+  animation:plModalFadeIn .3s ease-out forwards;
+}
+@keyframes plModalFadeIn{
+  from{opacity:0}
+  to{opacity:1}
+}
+.new-pl-modal-content{
+  position:relative;
+  width:100%;
+  max-width:340px;
+  background:linear-gradient(145deg,var(--bg3),var(--bg2));
+  border-radius:16px;
+  padding:24px;
+  box-shadow:0 32px 64px rgba(0,0,0,.6);
+  border:1px solid rgba(255,255,255,.1);
+  transform:translateY(20px) scale(0.95);
+  opacity:0;
+  transition:all .4s cubic-bezier(.25,.8,.25,1);
+}
+.new-pl-modal-bg.open .new-pl-modal-content{
+  transform:translateY(0) scale(1);
+  opacity:1;
+  animation:plModalFloat 3s ease-in-out infinite;
+}
+@keyframes plModalFloat{
+  0%,100%{transform:translateY(0) scale(1)}
+  50%{transform:translateY(-8px) scale(1.02)}
+}
+.new-pl-modal-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:16px;
+}
+.new-pl-modal-title{
+  font-size:1.1rem;
+  font-weight:700;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.new-pl-modal-title svg{
+  width:20px;
+  height:20px;
+  color:var(--green);
+}
+.new-pl-modal-close{
+  position:absolute;
+  top:8px;
+  right:8px;
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  background:rgba(255,255,255,.1);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  color:var(--muted);
+  transition:all .2s;
+  z-index:10;
+}
+.new-pl-modal-close:hover{
+  background:rgba(255,255,255,.2);
+  color:var(--text);
+  transform:scale(1.1);
+}
+.new-pl-modal-close svg{
+  width:12px;
+  height:12px;
+}
+.new-pl-modal-input{
+  width:100%;
+  padding:12px 16px;
+  border-radius:12px;
+  border:1px solid var(--bg4);
+  background:var(--bg2);
+  color:var(--text);
+  font-size:14px;
+  outline:none;
+  margin-bottom:14px;
+}
+.new-pl-modal-check{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:14px;
+  font-size:13px;
+  cursor:pointer;
+  user-select:text;
+}
+.new-pl-modal-check input{
+  width:auto;
+  margin:0;
+  cursor:pointer;
+  transform:scale(1.3);
+  pointer-events:auto;
+}
+.new-pl-modal-err{
+  color:var(--danger);
+  font-size:12px;
+  margin-bottom:12px;
+  min-height:16px;
+}
+.new-pl-modal-btns{
+  display:flex;
+  gap:12px;
+  justify-content:center;
+  margin-top:8px;
+}
+.new-pl-btn{
+  padding:10px 24px;
+  border-radius:20px;
+  font-size:13px;
+  font-weight:700;
+  cursor:pointer;
+  transition:all .2s;
+  border:none;
+}
+.new-pl-btn-outline{
+  background:transparent;
+  color:var(--muted);
+  border:1px solid var(--bg5);
+}
+.new-pl-btn-outline:hover{
+  color:var(--text);
+  border-color:var(--text);
+}
+.new-pl-btn-green{
+  background:var(--green);
+  color:#000;
+}
+.new-pl-btn-green:hover{
+  background:var(--green2);
+  transform:scale(1.03);
+}
 
 /* ── Responsive ── */
 @media(max-width:768px){
@@ -291,7 +563,7 @@ body.player-idle #player{display:none}
   .pl-item{justify-content:center;padding:8px 0}
   .pl-thumb{margin:0}
   #playlist-list{padding:0 4px 8px}
-  .tbl-head,.song-row{grid-template-columns:36px 1fr 60px 68px}
+  .tbl-head,.song-row{grid-template-columns:var(--col-num,36px) var(--col-title,1fr) var(--col-dur,60px) var(--col-actions,80px)}
   .tbl-head>:nth-child(3),.song-row .s-artist,.tbl-head>:nth-child(3){display:none}
   .view{padding:12px 12px 100px}
   .view-hero{padding:12px;min-height:140px}
@@ -317,9 +589,13 @@ body.player-idle #player{display:none}
 #bottom-nav{display:none;position:fixed;bottom:var(--player-h);left:0;right:0;background:var(--bg2);border-top:1px solid var(--bg3);z-index:30;justify-content:space-around;padding:8px 0 max(8px,env(safe-area-inset-bottom))}
 #np-screen{display:none;position:fixed;inset:0;z-index:90;background:var(--bg);flex-direction:column;overflow:hidden}
 #np-screen.open{display:flex}
+#np-screen.minimized #np-body{display:none}
+#np-screen.minimized{max-width:520px;left:auto;right:24px;bottom:calc(var(--player-h) + 12px);top:auto;height:auto;min-height:0;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.6);border:1px solid var(--bg3)}
+#np-screen.minimized #np-top{padding:6px 12px}
+#np-screen.minimized #np-close{transform:rotate(180deg)}
 #np-bg{position:absolute;inset:0;background:linear-gradient(180deg,var(--np-c1,#4a4a4a) 0%,var(--bg) 65%);opacity:.55;pointer-events:none}
 #np-top{position:relative;display:flex;align-items:center;justify-content:space-between;padding:calc(14px + env(safe-area-inset-top)) 18px 10px;flex-shrink:0}
-#np-close{background:none;border:none;color:var(--text);cursor:pointer;padding:6px;display:flex}
+#np-close{background:none;border:none;color:var(--text);cursor:pointer;padding:6px;display:flex;transition:transform .2s}
 #np-eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
 #np-body{position:relative;flex:1;min-height:0;display:flex;flex-direction:column}
 #np-cover-view{flex:1;min-height:0;display:flex;flex-direction:column;padding:10px 32px calc(24px + env(safe-area-inset-bottom));overflow-y:auto}
@@ -396,23 +672,30 @@ body.player-idle #player{display:none}
       <div class="sidebar-section">
         <div class="nav-btn active" data-v="home"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span>Home</span></div>
         <div class="nav-btn" data-v="search"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg><span>Search</span></div>
-      </div>
-      <hr class="sdiv">
-      <div class="lib-header"><span class="lib-label">Your Library</span><button class="lib-add" id="new-pl-btn" title="New playlist">+</button></div>
-      <div class="sidebar-section" style="padding-bottom:4px">
-        <div class="nav-btn" id="spotify-import-btn" style="color:var(--green)">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
-          <span>Import from Spotify</span>
         </div>
+        <hr class="sdiv">
+        <div id="sidebar-nav">
+        <div class="lib-header"><span class="lib-label">Your Library</span><button class="lib-add" id="new-pl-btn" title="New playlist">+</button></div>
+        <div class="sidebar-section" style="padding-bottom:4px">
+          <div class="nav-btn" id="spotify-import-btn" style="color:var(--green)">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+          <span>Import from Spotify</span>
+          </div>
+        </div>
+        <div class="sidebar-section">
+          <div class="nav-btn" id="new-pl-menu-btn" style="color:var(--green)">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg><span>New Playlist</span>
+          </div>
+        </div>
+        <div class="sidebar-section" style="padding-bottom:4px">
+          <div class="nav-btn" data-v="liked"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg><span>Liked Songs</span></div>
+          <div class="nav-btn" data-v="recommended"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span>For You</span></div>
+          <div class="nav-btn" data-v="discovery"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93V18h-2v1.93C7.06 19.48 4.52 16.94 4.07 14H6v-2H4.07C4.52 9.06 7.06 6.52 10 6.07V8h2V6.07c2.94 4.5 5.48 2.99 5.93 5.93H16v2h1.93c-.45 2.94-2.99 5.48-5.93 5.93z"/></svg><span>Discover</span></div>
+          <div class="nav-btn" data-v="history"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3a9 9 0 100 18A9 9 0 0013 3zm-1 5h1.5v5.25l4.5 2.67-.75 1.23L11 14V8z"/></svg><span>History</span></div>
+        </div>
+        <hr class="sdiv">
+        <div id="playlist-list"></div>
       </div>
-      <div class="sidebar-section" style="padding-bottom:4px">
-        <div class="nav-btn" data-v="liked"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg><span>Liked Songs</span></div>
-        <div class="nav-btn" data-v="recommended"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span>For You</span></div>
-        <div class="nav-btn" data-v="discovery"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93V18h-2v1.93C7.06 19.48 4.52 16.94 4.07 14H6v-2H4.07C4.52 9.06 7.06 6.52 10 6.07V8h2V6.07c2.94.45 5.48 2.99 5.93 5.93H16v2h1.93c-.45 2.94-2.99 5.48-5.93 5.93z"/></svg><span>Discover</span></div>
-        <div class="nav-btn" data-v="history"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3a9 9 0 100 18A9 9 0 0013 3zm-1 5h1.5v5.25l4.5 2.67-.75 1.23L11 14V8z"/></svg><span>History</span></div>
-      </div>
-      <hr class="sdiv">
-      <div id="playlist-list"></div>
     </div>
 
     <div id="main">
@@ -580,14 +863,22 @@ body.player-idle #player{display:none}
   </div>
 </div>
 
-<div id="pl-modal" class="modal-bg" style="display:none">
-  <div class="modal">
-    <h3>New Playlist</h3>
-    <input id="pl-name" type="text" placeholder="My playlist">
-    <label class="modal-check"><input type="checkbox" id="pl-shared"> Share with family</label>
-    <div class="modal-btns">
-      <button class="btn btn-outline btn-sm" id="pl-cancel">Cancel</button>
-      <button class="btn btn-green" id="pl-confirm">Create</button>
+<div id="pl-modal-bg" class="new-pl-modal-bg">
+  <div class="new-pl-modal-content">
+    <div class="new-pl-modal-header">
+      <div class="new-pl-modal-title" id="pl-modal-title">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        New Playlist
+      </div>
+      <div class="new-pl-modal-close" id="pl-modal-close">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></div>
+    </div>
+    <input id="pl-modal-name" type="text" class="new-pl-modal-input" placeholder="Playlist name" tabindex="1" autocomplete="off" spellcheck="true">
+    <label class="new-pl-modal-check"><input type="checkbox" id="pl-modal-shared"> Share with family</label>
+    <div id="pl-modal-err" class="new-pl-modal-err"></div>
+    <div class="new-pl-modal-btns">
+      <button class="new-pl-btn new-pl-btn-outline" id="pl-modal-cancel">Cancel</button>
+      <button class="new-pl-btn new-pl-btn-green" id="pl-modal-confirm">Save</button>
     </div>
   </div>
 </div>
@@ -648,17 +939,6 @@ body.player-idle #player{display:none}
   </div>
 </div>
 
-<div id="rename-modal" class="modal-bg" style="display:none">
-  <div class="modal">
-    <h3>Rename Playlist</h3>
-    <input id="rename-input" type="text" placeholder="New name">
-    <div class="modal-btns">
-      <button class="btn btn-outline btn-sm" id="rename-cancel">Cancel</button>
-      <button class="btn btn-green" id="rename-confirm">Save</button>
-    </div>
-  </div>
-</div>
-
 <div id="refresh-modal" class="modal-bg" style="display:none">
   <div class="modal">
     <h3>Continue?</h3>
@@ -683,6 +963,8 @@ body.player-idle #player{display:none}
   <hr class="ci-sep">
   <div class="ci red" id="ci-delete"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>Delete from library</div>
   <div class="ci red" id="ci-remove-pl" style="display:none"><svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>Remove from playlist</div>
+  <div class="ci" id="ci-move-top" style="display:none"><svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15"><path d="M12 5v14m7-7l-7-7-7 7"/></svg>Move to top</div>
+  <div class="ci" id="ci-move-bottom" style="display:none"><svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15"><path d="M12 19V5m0 14l-7-7 7 7zm0 0l7-7-7 7z"/></svg>Move to bottom</div>
 </div>
 
 <audio id="audio"></audio>
@@ -967,9 +1249,11 @@ function nav(view,param){
   document.querySelectorAll('.nav-btn,.bn-btn').forEach(b=>b.classList.toggle('active',b.dataset.v===view));
   const c=document.getElementById('content');
   const views={home:renderHome,search:renderSearch,recommended:renderRecommended,discovery:renderDiscovery,liked:renderLiked,playlists:renderPlaylists,history:renderHistory,admin:renderAdmin,'spotify-import':renderSpotifyImport};
-  if(views[view]){currentPlaylistId=null;views[view](c);}
+  if(views[view]){currentPlaylistId=null;curPlaylistSongs=[];curPlaylistCanEdit=false;views[view](c);}
   else if(view==='playlist')renderPlaylist(c,param);
   else if(view==='artist')renderArtist(c,param);
+  // Rebind column resizers after view renders (use microtask to allow async content to settle)
+  setTimeout(bindColResizers,50);
 }
 function updArrows(){document.getElementById('nav-back').disabled=navIdx<=0;document.getElementById('nav-fwd').disabled=navIdx>=navHist.length-1}
 document.getElementById('nav-back').onclick=()=>{if(navIdx>0){navIdx--;navLock=true;const h=navHist[navIdx];nav(h.view,h.param);navLock=false}};
@@ -981,9 +1265,9 @@ const SIDEBAR_MIN=200,SIDEBAR_MAX=600;
 function applySidebarWidth(w){const clamped=Math.max(SIDEBAR_MIN,Math.min(SIDEBAR_MAX,w));document.documentElement.style.setProperty('--sidebar-w',clamped+'px');localStorage.setItem('vitrola-sidebar-w',String(clamped))}
 const savedW=localStorage.getItem('vitrola-sidebar-w');if(savedW){document.documentElement.style.setProperty('--sidebar-w',Math.max(SIDEBAR_MIN,Math.min(SIDEBAR_MAX,parseInt(savedW)))+'px')}
 let isResizing=false,startX=0,startW=0;
-document.getElementById('sidebar-resize').onmousedown=e=>{e.preventDefault();isResizing=true;startX=e.clientX;startW=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-w'))||232;document.body.style.userSelect='none'}
+document.getElementById('sidebar-resize').onmousedown=e=>{e.preventDefault();isResizing=true;startX=e.clientX;startW=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-w'))||232}
 document.addEventListener('mousemove',e=>{if(!isResizing)return;const delta=e.clientX-startX;applySidebarWidth(startW+delta)})
-document.addEventListener('mouseup',()=>{isResizing=false;document.body.style.userSelect='auto'})
+document.addEventListener('mouseup',()=>{isResizing=false})
 document.getElementById('sidebar-resize').addEventListener('dblclick',()=>{const cur=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-w'))||232;applySidebarWidth(cur<=320?280:232)})
 // ── User menu ─────────────────────────────────────────────────────────────────
 document.getElementById('user-menu-btn').onclick=e=>{e.stopPropagation();document.getElementById('user-dropdown').classList.toggle('open')};
@@ -1109,32 +1393,20 @@ document.getElementById('apikeys-create-btn').onclick=async()=>{
 };
 
 // Rename playlist
-let renamePid=null;
 let currentPlaylistId=null;
-function showRename(pid,currentName){
-  renamePid=pid;
-  document.getElementById('rename-input').value=currentName;
-  document.getElementById('rename-modal').style.display='flex';
-  document.getElementById('rename-input').focus();
-  document.getElementById('rename-input').select();
+let curPlaylistSongs=[];
+let curPlaylistCanEdit=false;
+async function showRename(pid,currentName,shared){
+  openPlModal('rename',pid,currentName,!!shared);
 }
-document.getElementById('rename-cancel').onclick=()=>document.getElementById('rename-modal').style.display='none';
-document.getElementById('rename-confirm').onclick=async()=>{
-  const name=document.getElementById('rename-input').value.trim();
-  if(!name||!renamePid)return;
-  await api('PATCH',`/playlists/${renamePid}`,{name});
-  document.getElementById('rename-modal').style.display='none';
-  await loadPlaylists();
-  nav('playlist',renamePid);
-  toast('Playlist renamed');
-};
-document.getElementById('rename-input').onkeydown=e=>e.key==='Enter'&&document.getElementById('rename-confirm').click();
 document.addEventListener('click',e=>{
   if(e.target.closest('.modal-bg')||e.target.closest('#ctx'))return;
   document.getElementById('user-dropdown').classList.remove('open');
   closeCtx();
-  if(!e.target.closest('#np-screen')&&!e.target.closest('#now-playing')){
-    document.getElementById('np-screen').classList.remove('open');
+  if(!e.target.closest('#np-screen')&&!e.target.closest('#now-playing')&&!e.target.closest('#controls')&&!e.target.closest('#right-ctrl')){
+    const scr=document.getElementById('np-screen');
+    scr.classList.remove('open');
+    scr.classList.remove('minimized');
   }
 });
 
@@ -1288,7 +1560,7 @@ async function renderPlaylists(c){
     el.querySelectorAll('.pl-item').forEach(item=>item.onclick=()=>nav('playlist',item.dataset.pid));
     applyMarquee('#pl-view-list .pl-name');
   }
-  document.getElementById('pl-view-add').onclick=()=>{document.getElementById('pl-modal').style.display='flex';document.getElementById('pl-name').focus()};
+  document.getElementById('pl-view-add').onclick=()=>{openPlModal('create')};
 }
 
 // ── History ───────────────────────────────────────────────────────────────────
@@ -1307,6 +1579,8 @@ async function renderPlaylist(c,pid){
   currentPlaylistId=parseInt(pid);
   c.innerHTML='<div class="empty-state" style="padding-top:80px">Loading…</div>';
   const d=await api('GET',`/playlists/${pid}`);
+  curPlaylistSongs=d.songs;
+  curPlaylistCanEdit=!!d.playlist.can_edit;
   const[c1,c2]=pal(d.playlist.name);
   const artSrc=d.playlist.thumbnail;
   c.innerHTML=`
@@ -1323,14 +1597,16 @@ async function renderPlaylist(c,pid){
       <button class="ghost-btn ${shuffleOn?'active':''}" onclick="toggleShuffle()">Shuffle</button>
       ${d.playlist.can_edit?`
         <button class="ghost-btn" onclick="toggleShare(${pid},${d.playlist.shared?0:1})">${d.playlist.shared?'Unshare':'Share with family'}</button>
-        <button class="ghost-btn" onclick="showRename(${pid},'${esc(d.playlist.name)}')">Rename</button>
+        <button class="ghost-btn" onclick="showRename(${pid},'${esc(d.playlist.name)}',${d.playlist.shared?1:0})">Rename</button>
         <button class="ghost-btn red" onclick="deletePl(${pid},'${esc(d.playlist.name)}')">Delete</button>
       `:''}
     </div>`;
-  const inner=`<div class="view">${d.songs.length?tblH(d.songs):'<div class="empty-state">No songs yet.<p>Right-click any song and choose "Add to playlist".</p></div>'}</div>`;
+  const sortable = !!d.playlist.can_edit && d.songs.length > 1;
+  const inner=`<div class="view">${d.songs.length?tblH(d.songs,sortable):'<div class="empty-state">No songs yet.<p>Right-click any song and choose "Add to playlist".</p></div>'}</div>`;
   c.insertAdjacentHTML('beforeend',inner);
   if(d.songs.length)document.getElementById('pl-play-all').onclick=()=>{queue=[...d.songs];qi=0;playSong(queue[0])};
-  bindTbl(d.songs,d.songs);
+  bindTbl(d.songs,d.songs,sortable);
+  if(sortable) bindSortHandles(d.songs,d.playlist.id);
   applyMarquee('.view-hero-info h1');
 }
 
@@ -1384,16 +1660,21 @@ async function renderAdmin(c){
     const unusedInvites=id.invites.filter(i=>!i.used_by);
     v.innerHTML=`<div style="font-size:1.8rem;font-weight:800;margin-bottom:20px">Family / Admin</div>
 
-      <div style="font-size:1rem;font-weight:700;margin-bottom:12px">Members</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:1rem;font-weight:700">Members</div>
+        <button class="btn-sm btn-outline" onclick="resetLastSeen()" style="font-size:11px">Reset last seen</button>
+      </div>
       <div class="song-table">
-        <div class="tbl-head" style="grid-template-columns:1fr 1fr 120px"><div>Username</div><div>Joined</div><div></div></div>
+        <div class="tbl-head" style="grid-template-columns:1fr 120px 120px 140px 120px"><div>Username</div><div>Joined</div><div>Last seen</div><div></div><div></div></div>
         ${ud.users.map(u=>`
-          <div class="song-row" style="grid-template-columns:1fr 1fr 120px;cursor:default">
+          <div class="song-row" style="grid-template-columns:1fr 120px 120px 140px 120px;cursor:default">
             <div style="display:flex;align-items:center;gap:10px">
               <div style="width:32px;height:32px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--bg);flex-shrink:0">${u.username[0].toUpperCase()}</div>
               <span style="font-weight:600">${esc(u.username)}${u.id===1?' <span style="color:var(--green);font-size:11px">admin</span>':''}</span>
             </div>
-            <div style="color:var(--muted);font-size:13px">${new Date(u.created_at).toLocaleDateString()}</div>
+            <div style="color:var(--muted);font-size:12px;text-align:center">${new Date(u.created_at+'Z').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',timeZone:'America/New_York'})}</div>
+            <div style="color:var(--muted);font-size:12px;text-align:center">${u.last_seen?new Date(u.last_seen+'Z').toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'America/New_York'}):'<span style="color:var(--muted);font-size:12px">Never</span>'}</div>
+            <div>${u.id!==1?`<button id="reset-btn-${u.id}" class="btn-sm btn-outline" onclick="genTempPassword(${u.id},'${esc(u.username)}')">Reset Password</button>`:''}</div>
             <div>${u.id!==1?`<button class="btn-sm btn-outline" onclick="delUser(${u.id},'${esc(u.username)}')">Remove</button>`:''}</div>
           </div>`).join('')}
       </div>
@@ -1464,6 +1745,30 @@ async function updateYtdlpSetting(checked){
   }catch(e){toast('Failed to update: '+e.message)}
 }
 async function delUser(id,name){if(!confirm(`Remove ${name}?`))return;await api('DELETE',`/admin/users/${id}`);nav('admin')}
+async function resetLastSeen(){if(confirm('Reset all users\' last seen? This cannot be undone.'))await api('POST','/admin/users/reset-lastseen');nav('admin')}
+async function genTempPassword(uid,uname){
+  if(!confirm(`Generate a 4-digit PIN for ${uname}? They'll log in with it and then change it to a real password.`))return;
+  try{
+    const d=await api('POST',`/admin/users/${uid}/temp-password`);
+    await navigator.clipboard.writeText(d.temp_password).catch(()=>{});
+    toast(`${d.temp_password} -- PIN for ${uname}, copied. User logs in with it, then changes it via Settings > Change Password.`,4000);
+    // Update the button to show the PIN with a green highlight
+    const btn = document.getElementById(`reset-btn-${uid}`);
+    if (btn) {
+      btn.textContent = d.temp_password;
+      btn.style.background = 'var(--green)';
+      btn.style.color = 'var(--bg)';
+      btn.style.fontWeight = '700';
+      // Revert after 10 seconds
+      setTimeout(() => {
+        btn.textContent = 'Reset Password';
+        btn.style.background = '';
+        btn.style.color = '';
+        btn.style.fontWeight = '';
+      }, 10000);
+    }
+  }catch(e){toast('Failed to generate PIN: '+e.message)}
+}
 async function genInvite(){
   const d=await api('POST','/admin/invites');
   await navigator.clipboard.writeText(d.code).catch(()=>{});
@@ -1533,15 +1838,22 @@ function bindCards(songs,q,root){
 }
 
 // ── Table HTML ────────────────────────────────────────────────────────────────
-function tblH(songs){
+function tblH(songs,sortable){
   if(!songs.length)return'';
   return`<div class="song-table">
-    <div class="tbl-head"><div>#</div><div>Title</div><div>Artist</div><div>Duration</div><div></div></div>
+    <div class="tbl-head" style="position:relative">
+      <div>#</div>
+      <div class="col-title-wrapper" style="position:relative">Title<div class="col-resizer" data-col="title"></div></div>
+      <div class="col-artist-wrapper" style="position:relative">Artist<div class="col-resizer" data-col="artist"></div></div>
+      <div class="col-dur-wrapper" style="position:relative">Duration<div class="col-resizer" data-col="dur"></div></div>
+      <div></div>
+    </div>
     ${songs.map((s,i)=>{
       const[c1,c2]=pal(s.artist||s.title);
       const th=s.youtube_id?`https://img.youtube.com/vi/${s.youtube_id}/mqdefault.jpg`:'';
       const art=th?`<img class="s-thumb" src="${th}" onerror="this.style.background='linear-gradient(135deg,${c1},${c2})'" alt="">`:`<div class="s-thumb" style="background:linear-gradient(135deg,${c1},${c2})"></div>`;
       const isAct=currentSong&&s.youtube_id&&s.youtube_id===currentSong.youtube_id;
+      const dragHandle=sortable?`<div class="s-drag" title="Drag to reorder" draggable="true">⠿</div>`:'';
       return`<div class="song-row ${isAct?'active':''} ${isAct&&isPlaying?'playing':''}" data-yid="${s.youtube_id||''}" data-i="${i}">
         <div class="s-num">${i+1}</div>
         <div class="s-play"></div>
@@ -1549,6 +1861,7 @@ function tblH(songs){
         <div class="s-artist row-artist-link" data-artist="${esc(s.artist||'')}">${esc(s.artist||'-')}</div>
         <div class="s-dur">${fmt(s.duration)}</div>
         <div class="s-actions">
+          ${dragHandle}
           <button class="row-btn ${likedSet.has(s.youtube_id)?'liked':''}" data-yid="${s.youtube_id||''}" title="Like">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="${likedSet.has(s.youtube_id)?'currentColor':'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
           </button>
@@ -1564,10 +1877,10 @@ function tblH(songs){
   </div>`;
 }
 function addToQ(s){queue.push(s);toast(`Added: ${s.title}`);updQ()}
-function bindTbl(songs,q){
+function bindTbl(songs,q,sortable){
   document.querySelectorAll('.song-row').forEach(row=>{
     row.onclick=e=>{
-      if(e.target.closest('.row-btn')||e.target.closest('.row-artist-link'))return;
+      if(e.target.closest('.row-btn')||e.target.closest('.row-artist-link')||e.target.closest('.s-drag'))return;
       const i=parseInt(row.dataset.i);queue=q||songs;qi=i;
       const s=songs[i];if(s)s.youtube_id?playSong(s):resolvePlay(s);
     };
@@ -1594,12 +1907,121 @@ function bindTbl(songs,q){
   });
 }
 
+// ── Playlist song drag-and-drop reordering ─────────────────────────────────────
+function bindSortHandles(songs,pid){
+  const viewTable=document.querySelector('.view .song-table');
+  const rows=[...document.querySelectorAll('.song-row .s-drag')].filter(r=>r.closest('.song-table')===viewTable);
+  if(!rows.length)return;
+  // Drop target on the entire row of each song for a larger, more reliable target
+  const dropRows=[...document.querySelectorAll('.view .song-table .song-row')].filter(r=>r.closest('.song-table')===viewTable);
+  if(!dropRows.length)return;
+  rows.forEach((handle,i)=>{
+    handle.ondragstart=e=>{
+      handle.classList.add('hide');
+      handle.closest('.song-row').classList.add('s-row-dragging');
+      e.dataTransfer.effectAllowed='move';
+      e.dataTransfer.setData('text/plain',String(i));
+      // Provide a drag image for browsers that need it
+      const rect=handle.getBoundingClientRect();
+      e.dataTransfer.setDragImage(handle,rect.width/2,rect.height/2);
+    };
+    handle.ondragend=e=>{
+      handle.classList.remove('hide');
+      handle.closest('.song-row').classList.remove('s-row-dragging');
+    };
+  });
+  dropRows.forEach(row=>{
+    row.addEventListener('dragover',e=>{
+      e.preventDefault();
+      e.dataTransfer.dropEffect='move';
+      row.classList.add('s-drop-target');
+    });
+    row.addEventListener('dragleave',e=>{
+      e.preventDefault();
+      row.classList.remove('s-drop-target');
+    });
+    row.addEventListener('drop',e=>{
+      e.preventDefault();
+      row.classList.remove('s-drop-target');
+      const fromIdx=parseInt(e.dataTransfer.getData('text/plain'));
+      const toIdx=parseInt(row.dataset.i);
+      if(fromIdx===toIdx||toIdx<0||toIdx>=songs.length)return;
+      const newOrder=[...songs];
+      const[moved]=newOrder.splice(fromIdx,1);
+      newOrder.splice(toIdx,0,moved);
+      const yids=newOrder.map(s=>s.youtube_id);
+      api('PUT',`/playlists/${pid}/songs/reorder`,{order:yids}).then(()=>{
+        renderPlaylist(document.getElementById('content'),pid);
+      }).catch(()=>toast('Reorder failed'));
+    });
+  });
+}
+
+// ── Column resize ──────────────────────────────────────────────────────────────
+const COL_STORAGE_KEY='vitrola_col_widths';
+function loadColWidths(){
+  try{return JSON.parse(localStorage.getItem(COL_STORAGE_KEY)||'{}');}catch(e){return {}}
+}
+function saveColWidths(widths){
+  localStorage.setItem(COL_STORAGE_KEY,JSON.stringify(widths));
+}
+function applyColWidths(widths){
+  const root=document.documentElement;
+  for(const[col,val]of Object.entries(widths)){
+    root.style.setProperty('--col-'+col,val+'px');
+  }
+}
+function bindColResizers(){
+  const cols=loadColWidths();
+  applyColWidths(cols);
+  const resizers=document.querySelectorAll('.col-resizer');
+  if(!resizers.length)return;
+  let startX=0,startW=0,col='';
+  const onMouseMove=e=>{
+    const newW=Math.max(40,startW+(e.clientX-startX));
+    document.documentElement.style.setProperty('--col-'+col,newW+'px');
+  };
+  const onMouseUp=e=>{
+    const newW=Math.max(40,startW+(e.clientX-startX));
+    cols[col]=newW;
+    saveColWidths(cols);
+    document.removeEventListener('mousemove',onMouseMove);
+    document.removeEventListener('mouseup',onMouseUp);
+  };
+  resizers.forEach(handle=>{
+    handle.onmousedown=e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      col=handle.dataset.col;
+      const computed=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--col-'+col))||0;
+      startX=e.clientX;
+      startW=computed;
+      document.addEventListener('mousemove',onMouseMove);
+      document.addEventListener('mouseup',onMouseUp);
+    };
+  });
+}
+function resetColWidths(){
+  localStorage.removeItem(COL_STORAGE_KEY);
+  document.documentElement.style.removeProperty('--col-title');
+  document.documentElement.style.removeProperty('--col-artist');
+  document.documentElement.style.removeProperty('--col-dur');
+  document.documentElement.style.removeProperty('--col-actions');
+  // Re-apply defaults by reloading
+  bindColResizers();
+}
+
 // ── Context menu ──────────────────────────────────────────────────────────────
 function showCtx(e,song){
   ctxSong=song;
-  // Show remove-from-playlist only when viewing a playlist
+  // Show remove-from-playlist and move-to-top/bottom only when viewing an editable playlist
   const rpl=document.getElementById('ci-remove-pl');
-  rpl.style.display=currentPlaylistId?'flex':'none';
+  const mt=document.getElementById('ci-move-top');
+  const mb=document.getElementById('ci-move-bottom');
+  const inEditablePl=currentPlaylistId && curPlaylistCanEdit && curPlaylistSongs.length;
+  rpl.style.display=inEditablePl?'flex':'none';
+  mt.style.display=inEditablePl?'flex':'none';
+  mb.style.display=inEditablePl?'flex':'none';
   const li=document.getElementById('ci-like');
   li.querySelector('svg').setAttribute('fill',likedSet.has(song?.youtube_id)?'currentColor':'none');
   li.innerHTML=li.innerHTML.replace(/Like$|Unlike$/,'');
@@ -1608,18 +2030,12 @@ function showCtx(e,song){
   // Build playlist items: "New playlist" option first, then existing playlists sorted by name
   const userPlaylists=playlists.filter(p=>p.user_id===me.id||p.shared).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
   pll.innerHTML=`<div class="ci" id="ci-pl-new"><svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15" style="margin-right:6px"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>New playlist</div><hr class="ci-sep">`+userPlaylists.map(p=>`<div class="ci" data-pid="${p.id}"><span class="ci-text" style="min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</span></div>`).join('');
-  // Handle "New playlist" click
-  document.getElementById('ci-pl-new').onclick=async()=>{
+  // Handle "New playlist" click - use the modal
+  document.getElementById('ci-pl-new').onclick=()=>{
     if(!ctxSong?.youtube_id){toast('Play the song first to add it');return}
-    const name=prompt('Playlist name:');
-    if(!name?.trim())return;
-    try{
-      const d=await api('POST','/playlists',{name:name.trim()});
-      await api('POST',`/playlists/${d.id}/songs/${ctxSong.youtube_id}`);
-      toast('Created and added');
-      loadPlaylists();
-    }catch(e){toast(e.message)}
+    ctxNewPlSong=ctxSong;
     closeCtx();
+    openPlModal('create');
   };
   applyMarquee('#ctx .ci-text');
   // Handle existing playlist clicks
@@ -1662,6 +2078,34 @@ document.getElementById('ci-remove-pl').onclick=async()=>{
     await api('DELETE',`/playlists/${currentPlaylistId}/songs/${ctxSong.youtube_id}`);
     toast(`Removed from playlist`);
     nav('playlist',currentPlaylistId);
+  }catch(e){toast(e.message)}
+  closeCtx();
+};
+document.getElementById('ci-move-top').onclick=async()=>{
+  if(!ctxSong?.youtube_id||!currentPlaylistId||!curPlaylistSongs)return;
+  const pid=currentPlaylistId;
+  const yids=curPlaylistSongs.map(s=>s.youtube_id);
+  const from=yids.indexOf(ctxSong.youtube_id);
+  if(from<=0)return;
+  yids.splice(from,1);
+  yids.unshift(ctxSong.youtube_id);
+  try{
+    await api('PUT',`/playlists/${pid}/songs/reorder`,{order:yids});
+    nav('playlist',pid);
+  }catch(e){toast(e.message)}
+  closeCtx();
+};
+document.getElementById('ci-move-bottom').onclick=async()=>{
+  if(!ctxSong?.youtube_id||!currentPlaylistId||!curPlaylistSongs)return;
+  const pid=currentPlaylistId;
+  const yids=curPlaylistSongs.map(s=>s.youtube_id);
+  const from=yids.indexOf(ctxSong.youtube_id);
+  if(from<0||from>=yids.length-1)return;
+  yids.splice(from,1);
+  yids.push(ctxSong.youtube_id);
+  try{
+    await api('PUT',`/playlists/${pid}/songs/reorder`,{order:yids});
+    nav('playlist',pid);
   }catch(e){toast(e.message)}
   closeCtx();
 };
@@ -1905,10 +2349,17 @@ let npLyricsLines=[],npLyricsLoadedFor=null,npActiveLineIdx=-1;
 
 function openNowPlaying(){
   if(!currentSong)return;
-  document.getElementById('np-screen').classList.add('open');
+  const scr=document.getElementById('np-screen');
+  scr.classList.add('open');
+  scr.classList.remove('minimized');
   if(npLyricsLoadedFor!==currentSong.youtube_id)loadLyricsFor(currentSong.youtube_id);
 }
 function closeNowPlaying(){document.getElementById('np-screen').classList.remove('open')}
+function toggleNpMinimized(){
+  const scr=document.getElementById('np-screen');
+  scr.classList.toggle('minimized');
+  if(!scr.classList.contains('minimized')&&!scr.classList.contains('open')){scr.classList.add('open')}
+}
 
 function toggleLyricsMode(on){
   const scr=document.getElementById('np-screen');
@@ -1972,8 +2423,8 @@ function highlightLyrics(){
 }
 
 document.getElementById('now-playing').onclick=e=>{if(!e.target.closest('#now-like'))openNowPlaying()};
-document.getElementById('np-close').onclick=closeNowPlaying;
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('np-screen').classList.contains('open'))closeNowPlaying()});
+document.getElementById('np-close').onclick=toggleNpMinimized;
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){const scr=document.getElementById('np-screen');if(scr.classList.contains('open')){if(scr.classList.contains('minimized'))closeNowPlaying();else scr.classList.add('minimized')}}});
 document.getElementById('np-lyrics-toggle').onclick=()=>{
   const scr=document.getElementById('np-screen');
   toggleLyricsMode(!scr.classList.contains('lyrics-mode'));
@@ -2077,6 +2528,7 @@ document.addEventListener('keydown',e=>{
   const tag=e.target.tagName;
   if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
   if(e.target.closest('.modal-bg'))return;
+  if(e.target.closest('.new-pl-modal-bg'))return;
   if(e.code==='Space'){e.preventDefault();document.getElementById('btn-play').click()}
   else if(e.code==='ArrowRight'&&audio.duration)audio.currentTime=Math.min(audio.currentTime+5,audio.duration);
   else if(e.code==='ArrowLeft'&&audio.duration)audio.currentTime=Math.max(audio.currentTime-5,0);
@@ -2086,10 +2538,8 @@ document.addEventListener('keydown',e=>{
 });
 
 document.getElementById('spotify-modal').addEventListener('mousedown',e=>{if(e.target===document.getElementById('spotify-modal'))document.getElementById('spotify-modal').style.display='none'});
-document.getElementById('pl-modal').addEventListener('mousedown',e=>{if(e.target===document.getElementById('pl-modal'))document.getElementById('pl-modal').style.display='none'});
 document.getElementById('passwd-modal').addEventListener('mousedown',e=>{if(e.target===document.getElementById('passwd-modal'))document.getElementById('passwd-modal').style.display='none'});
 document.getElementById('apikeys-modal').addEventListener('mousedown',e=>{if(e.target===document.getElementById('apikeys-modal'))document.getElementById('apikeys-close').click()});
-document.getElementById('rename-modal').addEventListener('mousedown',e=>{if(e.target===document.getElementById('rename-modal'))document.getElementById('rename-modal').style.display='none'});
 document.getElementById('spotify-import-btn').onclick=()=>nav('spotify-import');
 
 // ── Refresh confirmation ────────────────────────────────────────────────────────
@@ -2311,20 +2761,78 @@ async function renderSpotifyImport(c){
   };
 }
 
-// ── Playlist modal ────────────────────────────────────────────────────────────
-document.getElementById('new-pl-btn').onclick=()=>{document.getElementById('pl-modal').style.display='flex';document.getElementById('pl-name').focus()};
-document.getElementById('pl-cancel').onclick=()=>document.getElementById('pl-modal').style.display='none';
-document.getElementById('pl-confirm').onclick=async()=>{
-  const name=document.getElementById('pl-name').value.trim();
-  const shared=document.getElementById('pl-shared').checked;
+// ── Create new playlist (modal for + button, prompt for menu option) ─────────────
+// Modal state
+let plModalMode='create';
+let plModalPid=null;
+let ctxNewPlSong=null;
+
+function openPlModal(mode,pid,name,shared){
+  plModalMode=mode;
+  plModalPid=pid||null;
+  const el=document.getElementById('pl-modal-bg');
+  el.classList.add('open');
+  const input=document.getElementById('pl-modal-name');
+  const title=document.getElementById('pl-modal-title');
+  const confirmBtn=document.getElementById('pl-modal-confirm');
+  const sharedChk=document.getElementById('pl-modal-shared');
+  const err=document.getElementById('pl-modal-err');
+  if(mode==='create'){
+    title.innerHTML=`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg> New Playlist`;
+    input.value='';
+    sharedChk.checked=false;
+    sharedChk.parentElement.style.display='flex';
+    input.placeholder='Playlist name';
+    confirmBtn.textContent='Create';
+  } else {
+    title.innerHTML=`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> Rename Playlist`;
+    input.value=name||'';
+    sharedChk.checked=shared;
+    sharedChk.parentElement.style.display='none';
+    input.placeholder='New name';
+    confirmBtn.textContent='Save';
+  }
+  err.textContent='';
+  setTimeout(()=>{input.focus({preventScroll:true});input.select()},50);
+}
+function closePlModal(){
+  document.getElementById('pl-modal-bg').classList.remove('open');
+}
+document.getElementById('new-pl-btn').onclick=()=>openPlModal('create');
+document.getElementById('new-pl-menu-btn').onclick=()=>openPlModal('create');
+document.getElementById('pl-modal-cancel').onclick=closePlModal;
+document.getElementById('pl-modal-close').onclick=closePlModal;
+document.getElementById('pl-modal-name').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('pl-modal-confirm').click()});
+document.getElementById('pl-modal-bg').addEventListener('mousedown',e=>{if(e.target===document.getElementById('pl-modal-bg'))closePlModal()});
+document.getElementById('pl-modal-confirm').onclick=async()=>{
+  const name=document.getElementById('pl-modal-name').value.trim();
+  const err=document.getElementById('pl-modal-err');
+  err.textContent='';
   if(!name)return;
-  await api('POST','/playlists',{name,shared});
-  document.getElementById('pl-modal').style.display='none';
-  document.getElementById('pl-name').value='';
-  document.getElementById('pl-shared').checked=false;
-  await loadPlaylists();
+  try{
+    if(plModalMode==='create'){
+      const shared=document.getElementById('pl-modal-shared').checked;
+      const d=await api('POST','/playlists',{name,shared});
+      await loadPlaylists();
+      if(ctxNewPlSong&&ctxNewPlSong.youtube_id){
+        await api('POST',`/playlists/${d.id}/songs/${ctxNewPlSong.youtube_id}`);
+        toast('Created and added');
+      } else {
+        toast('Playlist created');
+      }
+    } else {
+      await api('PATCH',`/playlists/${plModalPid}`,{name});
+      await loadPlaylists();
+      if(navHist.length>0&&navHist[navIdx].view==='playlist'&&navHist[navIdx].param==plModalPid){nav('playlist',plModalPid)}else{nav('playlists')}
+      toast('Playlist renamed');
+    }
+    closePlModal();
+    document.getElementById('pl-modal-name').value='';
+    ctxNewPlSong=null;
+  }catch(e){
+    err.textContent=e.message;
+  }
 };
-document.getElementById('pl-name').onkeydown=e=>e.key==='Enter'&&document.getElementById('pl-confirm').click();
 
 boot();
 </script>

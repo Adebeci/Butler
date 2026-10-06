@@ -332,24 +332,110 @@ async def get_song(request: Request):
     return _ok(song=_song_child(row))
 
 
-@router.api_route("/search3.view", methods=["GET", "POST", "HEAD"])
-async def search3(request: Request):
+async def _do_search(request: Request):
     user, err = await _authenticate(request)
     if not user:
         return err
     params = dict(request.query_params)
-    q = (params.get("query") or "").strip().strip('"')
+    q = (params.get("query") or params.get("q") or "").strip().strip('"')
+
+    # Subsonic search3 pagination: p (page, 0-based), ps (page size).
+    # Defaults per spec: p=0, ps=20. Cap ps to keep results snappy, and
+    # fetch a wider internal batch before slicing to the requested page
+    # so we have enough to fill it after adding YouTube/local results.
+    try:
+        page = max(0, int(params.get("p", 0)))
+    except (ValueError, TypeError):
+        page = 0
+    try:
+        page_size = max(1, min(int(params.get("ps", 20)), 100))
+    except (ValueError, TypeError):
+        page_size = 20
+
+    # Match Butler's native search: include ALL songs (not just downloaded),
+    # local metadata catalog, and YouTube results (when downloads enabled)
+    # so mobile clients like Arpeggi see the same breadth as the web UI.
+    from songs_db import search_local
+    from main import _resolve_song_rows, settings
+    from downloader import search_youtube
+
     db = get_db()
+    # Fetch a wider net than one page so we have enough after merging sources
+    internal_limit = max(40, page_size * (page + 1) + 20)
     if q:
         rows = db.execute(
-            "SELECT * FROM songs WHERE downloaded=1 AND (title LIKE ? OR artist LIKE ?) LIMIT 40",
-            (f"%{q}%", f"%{q}%"),
+            "SELECT * FROM songs WHERE (title LIKE ? OR artist LIKE ?) LIMIT ?",
+            (f"%{q}%", f"%{q}%", internal_limit),
         ).fetchall()
     else:
-        rows = db.execute("SELECT * FROM songs WHERE downloaded=1 LIMIT 40").fetchall()
+        rows = db.execute("SELECT * FROM songs LIMIT ?", (internal_limit,)).fetchall()
+
+    # Add local metadata (not yet in songs table)
+    local_meta = search_local(q, 10) if q else []
+    seen_titles = {(r["title"], r["artist"]) for r in rows}
+    local_filtered = [r for r in local_meta if (r["title"], r["artist"]) not in seen_titles]
+    seen_titles.update({(r["title"], r["artist"]) for r in local_filtered})
+
+    # Add YouTube results if downloads enabled
+    yt_results = []
+    if q and settings.get_bool_setting("ytdlp_downloads_enabled") and len(rows) + len(local_filtered) < 40:
+        try:
+            yt_raw = search_youtube(q, max_results=8)
+            for r in yt_raw:
+                if (r["title"], r["artist"]) not in seen_titles:
+                    seen_titles.add((r["title"], r["artist"]))
+                    yt_results.append(r)
+        except Exception:
+            pass
+
+    # Resolve local + YouTube rows to songs table entries
+    if local_filtered or yt_results:
+        resolved = _resolve_song_rows(local_filtered + yt_results)
+        existing_ids = {r["id"] for r in rows}
+        for r in resolved:
+            if r.get("youtube_id"):
+                row = db.execute("SELECT * FROM songs WHERE youtube_id=?", (r["youtube_id"],)).fetchone()
+                if not row:
+                    # Insert the resolved song so Subsonic clients can stream it
+                    title_key = f"{(r.get('title') or '').lower()}|{(r.get('artist') or '').lower()}"
+                    thumbnail = r.get("thumbnail") or f"https://img.youtube.com/vi/{r['youtube_id']}/mqdefault.jpg"
+                    db.execute(
+                        "INSERT OR IGNORE INTO songs (title,artist,duration,youtube_id,downloaded,title_key,thumbnail) "
+                        "VALUES (?,?,?,?,0,?,?)",
+                        (r.get("title") or "", r.get("artist") or "", r.get("duration") or 0, r["youtube_id"], title_key, thumbnail),
+                    )
+                    row = db.execute("SELECT * FROM songs WHERE youtube_id=?", (r["youtube_id"],)).fetchone()
+                if row and row["id"] not in existing_ids:
+                    existing_ids.add(row["id"])
+                    rows = list(rows) + [dict(row)]
+
     db.close()
-    songs = [_song_child(r) for r in rows]
+    # Apply Subsonic pagination (p = 0-based page number, ps = page size)
+    # to the final merged result set so clients paging through results get
+    # the expected slice, not the raw internal batch.
+    start = page * page_size
+    end = start + page_size
+    song_rows = [dict(r) for r in rows[start:end]]
+    songs = [_song_child(r) for r in song_rows]
     return _ok(searchResult3={"song": songs})
+
+
+@router.api_route("/search3.view", methods=["GET", "POST", "HEAD"])
+async def search3(request: Request):
+    return await _do_search(request)
+
+
+@router.api_route("/search2.view", methods=["GET", "POST", "HEAD"])
+async def search2(request: Request):
+    """search2.view — older Subsonic clients that use this endpoint.
+    Maps to the same broad search as search3.view."""
+    return await _do_search(request)
+
+
+@router.api_route("/search.view", methods=["GET", "POST", "HEAD"])
+async def search(request: Request):
+    """search.view — very old Subsonic clients."""
+    return await _do_search(request)
 
 
 @router.api_route("/getPlaylists.view", methods=["GET", "POST", "HEAD"])
@@ -383,7 +469,7 @@ async def get_playlist(request: Request):
         return _fail(70, "Playlist not found.")
     rows = db.execute("""
         SELECT s.* FROM playlist_songs ps JOIN songs s ON s.id=ps.song_id
-        WHERE ps.playlist_id=? ORDER BY ps.added_at
+        WHERE ps.playlist_id=? ORDER BY ps.position
     """, (pid,)).fetchall()
     db.close()
     songs = [_song_child(r) for r in rows]
@@ -673,12 +759,12 @@ async def create_playlist(request: Request):
     db = get_db()
     cur = db.execute("INSERT INTO playlists (user_id, name) VALUES (?,?)", (user["id"], name))
     pid = cur.lastrowid
-    for sid in song_ids:
-        db.execute("INSERT INTO playlist_songs (playlist_id, song_id) VALUES (?,?)", (pid, sid))
+    for pos, sid in enumerate(song_ids):
+        db.execute("INSERT INTO playlist_songs (playlist_id, song_id, position) VALUES (?,?,?)", (pid, sid, pos))
     db.commit()
     rows = db.execute("""
         SELECT s.* FROM playlist_songs ps JOIN songs s ON s.id=ps.song_id
-        WHERE ps.playlist_id=? ORDER BY ps.added_at
+        WHERE ps.playlist_id=? ORDER BY ps.position
     """, (pid,)).fetchall()
     db.close()
     songs = [_song_child(r) for r in rows]
@@ -734,9 +820,10 @@ async def update_playlist(request: Request):
     )
     if remove_indices:
         # playlist_songs has a composite (playlist_id, song_id) primary key,
-        # not a surrogate id -- delete by that pair instead.
+        # not a surrogate id -- delete by that pair instead. Order by position
+        # (the current display order) so indices map to the right songs.
         ordered = db.execute(
-            "SELECT song_id FROM playlist_songs WHERE playlist_id=? ORDER BY added_at", (pid,)
+            "SELECT song_id FROM playlist_songs WHERE playlist_id=? ORDER BY position", (pid,)
         ).fetchall()
         for idx in remove_indices:
             if 0 <= idx < len(ordered):
@@ -744,9 +831,18 @@ async def update_playlist(request: Request):
                     "DELETE FROM playlist_songs WHERE playlist_id=? AND song_id=?",
                     (pid, ordered[idx]["song_id"]),
                 )
+        # Re-number remaining positions to stay contiguous after removals
+        remaining = db.execute(
+            "SELECT song_id FROM playlist_songs WHERE playlist_id=? ORDER BY position", (pid,)
+        ).fetchall()
+        for new_pos, row in enumerate(remaining):
+            db.execute("UPDATE playlist_songs SET position=? WHERE playlist_id=? AND song_id=?",
+                       (new_pos, pid, row["song_id"]))
 
     for sid in request.query_params.getlist("songIdToAdd"):
-        db.execute("INSERT INTO playlist_songs (playlist_id, song_id) VALUES (?,?)", (pid, sid))
+        max_pos = db.execute("SELECT MAX(position) FROM playlist_songs WHERE playlist_id=?", (pid,)).fetchone()[0]
+        new_pos = (max_pos or 0) + 1
+        db.execute("INSERT INTO playlist_songs (playlist_id, song_id, position) VALUES (?,?,?)", (pid, sid, new_pos))
 
     db.commit(); db.close()
     return _ok()

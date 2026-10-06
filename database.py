@@ -15,7 +15,8 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_seen TIMESTAMP
         )
     """)
 
@@ -202,6 +203,10 @@ def init_db():
         ON users(oidc_issuer, oidc_subject)
         WHERE oidc_subject IS NOT NULL
     """)
+    # Add last_seen column for tracking user activity (for admin panel "last seen")
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN last_seen TIMESTAMP")
+    except: pass
 
     # Add sort_order column for manual playlist reordering
     try:
@@ -212,6 +217,24 @@ def init_db():
         c.execute("UPDATE playlists SET sort_order = id WHERE sort_order IS NULL OR sort_order = 0")
     except: pass
 
+    # Add position column to playlist_songs for manual song reordering within playlists.
+    # The composite PK (playlist_id, song_id) stays — it prevents the same song
+    # being added twice to a playlist, which is desirable for Subsonic clients.
+    # position controls display/playback order, seeded from added_at so existing
+    # playlists keep their current order.
+    try:
+        c.execute("ALTER TABLE playlist_songs ADD COLUMN position INTEGER")
+    except: pass
+    # Backfill: assign a position based on insertion order (added_at) for any rows
+    # that don't have one yet.
+    c.execute("""
+        UPDATE playlist_songs SET position = (
+            SELECT COUNT(*) FROM playlist_songs ps2
+            WHERE ps2.playlist_id = playlist_songs.playlist_id
+              AND ps2.added_at <= playlist_songs.added_at
+        ) WHERE position IS NULL
+    """)
+
     # Backfills
     c.execute("""
         UPDATE songs SET title_key = LOWER(title) || '|' || LOWER(COALESCE(artist,''))
@@ -220,6 +243,21 @@ def init_db():
     c.execute("""
         UPDATE songs SET thumbnail = 'https://img.youtube.com/vi/' || youtube_id || '/mqdefault.jpg'
         WHERE thumbnail IS NULL AND youtube_id IS NOT NULL
+    """)
+
+    # Password reset tokens -- admin generates these so a user who forgot
+    # their password can reset it. Tokens are single-use, expire after 1 hour,
+    # and are stored as SHA-256 hashes (plaintext shown only once when generated).
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            token_hash TEXT NOT NULL UNIQUE,
+            expires_at TIMESTAMP NOT NULL,
+            used INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
     """)
 
     conn.commit()

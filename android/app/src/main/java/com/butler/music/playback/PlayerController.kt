@@ -118,6 +118,88 @@ class PlayerController(private val context: Context, val api: ApiClient, private
         }
     }
 
+    /** Add a single song to the end of the current queue. */
+    fun addToQueue(song: Song) {
+        val c = controller
+        if (c == null) {
+            // No active controller — just update our state so it's visible
+            queueSongs = queueSongs + song
+            _state.value = _state.value.copy(queue = queueSongs)
+            return
+        }
+        queueSongs = queueSongs + song
+        c.addMediaItem(song.toMediaItem(api, downloads))
+        _state.value = _state.value.copy(queue = queueSongs)
+    }
+
+    /** Add a list of songs to the end of the current queue. */
+    fun addAllToQueue(songs: List<Song>) {
+        val c = controller
+        if (c == null) {
+            queueSongs = queueSongs + songs
+            _state.value = _state.value.copy(queue = queueSongs)
+            return
+        }
+        queueSongs = queueSongs + songs
+        val items = songs.map { it.toMediaItem(api, downloads) }
+        c.addMediaItems(items)
+        _state.value = _state.value.copy(queue = queueSongs)
+    }
+
+    /**
+     * Remove the item at [index] from the Media3 queue and our state.
+     * When the current item is removed, Media3 will advance to the next item
+     * automatically -- we rely on onMediaItemTransition to sync currentIndex.
+     */
+    fun removeFromQueue(index: Int) {
+        val c = controller
+        if (c == null) {
+            if (index !in 0 until queueSongs.size) return
+            queueSongs = queueSongs.toMutableList().also { it.removeAt(index) }
+            val newIndex = if (index < currentIndex) currentIndex - 1 else currentIndex
+            _state.value = _state.value.copy(
+                queue = queueSongs,
+                currentIndex = if (index == currentIndex) newIndex else newIndex.coerceAtLeast(-1)
+            )
+            return
+        }
+        if (index !in 0 until queueSongs.size) return
+        queueSongs = queueSongs.toMutableList().also { it.removeAt(index) }
+        c.removeMediaItem(index)
+        val newIndex = if (index < currentIndex) currentIndex - 1 else currentIndex
+        _state.value = _state.value.copy(
+            queue = queueSongs,
+            currentIndex = if (index == currentIndex) newIndex else newIndex.coerceAtLeast(-1)
+        )
+    }
+
+    /** Clear the entire queue and stop playback. */
+    fun clearQueue() {
+        val c = controller
+        if (c == null) {
+            queueSongs = emptyList()
+            _state.value = _state.value.copy(
+                queue = emptyList(),
+                currentIndex = -1
+            )
+            return
+        }
+        queueSongs = emptyList()
+        c.clearMediaItems()
+        _state.value = _state.value.copy(
+            queue = emptyList(),
+            currentIndex = -1
+        )
+    }
+
+    /** Move playback to the item at [index] in the queue. */
+    fun moveToQueueIndex(index: Int) {
+        val c = controller ?: return
+        if (index !in 0 until (c.mediaItemCount)) return
+        c.seekTo(index, 0L)
+        c.play()
+    }
+
     fun release() {
         positionPoller?.cancel()
         controller?.release()
